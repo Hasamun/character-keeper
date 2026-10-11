@@ -121,9 +121,9 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
               return (
                 <div key={p} className={cn("panel border-l-4 p-3", M.border)}>
                   <div className={cn("mb-1 flex items-center gap-2", M.text)}><M.icon className="h-4 w-4" /></div>
-                  <Row type="primary" name={p} />
+                  {Row({ type: "primary", name: p })}
                   <div className="mt-1 border-t border-border/60 pt-1 pl-2">
-                    {SECONDARY_GROUPS[p].map((s) => <Row key={s} type="secondary" name={s} />)}
+                    {SECONDARY_GROUPS[p].map((s) => <div key={s}>{Row({ type: "secondary", name: s })}</div>)}
                   </div>
                 </div>
               );
