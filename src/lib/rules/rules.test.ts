@@ -30,7 +30,7 @@ describe("game rules", () => {
   it("secondary level up gives round(sum/3) bonus to its primary", () => {
     // level 0 row 30+40+45 = 115 → bonus 38
     const { character } = addSecondaryExp(newCharacter(), "Атлетика", 115);
-    expect(character.secondary["Атлетика"].level).toBe(1);
+    expect(character.secondary["Атлетика"]!.level).toBe(1);
     expect(character.primary["Сила"]).toEqual({ level: 0, subIndex: 0, progress: 38 });
   });
 
@@ -42,13 +42,13 @@ describe("game rules", () => {
   it("HP = race + class + Con + Stamina + Str bonuses", () => {
     const c = newCharacter();
     c.race = "Дворф"; c.characterClass = "Танк";
-    c.primary["Телосложение"].level = 2; c.secondary["Стойкость"].level = 1; c.primary["Сила"].level = 0;
+    c.primary["Телосложение"]!.level = 2; c.secondary["Стойкость"]!.level = 1; c.primary["Сила"]!.level = 0;
     expect(getHpComponents(c).Итого).toBe(13 + 15 + 5 + 1 + 1);
   });
 
   it("AC = 10 + Dex level", () => {
     const c = newCharacter();
-    c.primary["Ловкость"].level = 3;
+    c.primary["Ловкость"]!.level = 3;
     expect(getArmorClass(c)).toBe(13);
   });
 
