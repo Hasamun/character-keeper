@@ -102,8 +102,8 @@ export function newCharacter(): Character {
   return {
     id: uid(),
     name: "",
-    race: Object.keys(RACES)[0],
-    characterClass: Object.keys(CLASSES)[0],
+    race: Object.keys(RACES)[0]!,
+    characterClass: Object.keys(CLASSES)[0]!,
     avatar: "",
     primary: Object.fromEntries(PRIMARY_STAT_NAMES.map((n) => [n, { level: 0, subIndex: 0, progress: 0 }])),
     secondary: Object.fromEntries(SECONDARY_SKILLS.map((n) => [n, { level: 0, subIndex: 0, progress: 0 }])),
@@ -143,12 +143,12 @@ export const getCharacterLevel = (c: Character) =>
 export function primaryRequired(level: number, sub: number): number | null {
   const row = PRIMARY_EXP_TABLE[level];
   if (!row || sub < 0 || sub >= row.length) return null;
-  return row[sub];
+  return row[sub]!;
 }
 export function secondaryRequired(level: number, sub: number): number | null {
   const row = SECONDARY_EXP_TABLE[level];
   if (!row || sub < 0 || sub >= row.length) return null;
-  return row[sub];
+  return row[sub]!;
 }
 export function sublevelCost(type: "primary" | "secondary", level: number, sub: number) {
   return (type === "primary" ? primaryRequired(level, sub) : secondaryRequired(level, sub)) ?? 0;
@@ -265,7 +265,7 @@ function applySecondary(c: Character, name: string, amount: number): string | nu
   c.secondary[name] = { level, subIndex: sub, progress };
 
   if (level !== oldLevel) {
-    const primary = SKILL_TO_PRIMARY[name];
+    const primary = SKILL_TO_PRIMARY[name]!;
     const from = Math.min(level, oldLevel), to = Math.max(level, oldLevel);
     for (let lvl = from; lvl < to; lvl++) {
       const row = SECONDARY_EXP_TABLE[lvl];
@@ -302,7 +302,7 @@ export function editorAdjust(
   const maxSub = type === "primary" ? 4 : 2;
   const next = clone(c);
   const group = type === "primary" ? next.primary : next.secondary;
-  let { level, subIndex: sub } = group[name];
+  let { level, subIndex: sub } = group[name]!;
   if (direction > 0) {
     if (level >= EDITOR_MAX_LEVEL) return { character: c, freeExp, error: `${name} уже на максимальном уровне ${EDITOR_MAX_LEVEL}` };
     const cost = sublevelCost(type, level, sub);

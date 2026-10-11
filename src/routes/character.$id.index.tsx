@@ -161,8 +161,8 @@ function StatsTab({ c, onPick }: { c: Character; onPick: (t: { type: "primary" |
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {PRIMARY_STAT_NAMES.map((p) => {
-        const M = STAT_META[p];
-        const s = c.primary[p];
+        const M = STAT_META[p]!;
+        const s = c.primary[p]!;
         const req = primaryRequired(s.level, s.subIndex);
         return (
           <section key={p} className={cn("panel overflow-hidden border-t-2", M.border)}>
@@ -182,7 +182,7 @@ function StatsTab({ c, onPick }: { c: Character; onPick: (t: { type: "primary" |
             </button>
             <div className="border-t border-border/60">
               {SECONDARY_GROUPS[p].map((sk) => {
-                const ss = c.secondary[sk];
+                const ss = c.secondary[sk]!;
                 const r = secondaryRequired(ss.level, ss.subIndex);
                 return (
                   <button key={sk} onClick={() => onPick({ type: "secondary", name: sk })} className="block w-full px-4 py-2 text-left transition hover:bg-accent/30">
@@ -214,7 +214,7 @@ function ExpDialog({ c, target, onClose, save }: {
   const apply = (sign: 1 | -1) => {
     if (!target) return;
     const n = Math.trunc(Number(amount));
-    if (!Number.isFinite(n) || n <= 0) return toast.error("Введите положительное число");
+    if (!Number.isFinite(n) || n <= 0) { toast.error("Введите положительное число"); return; }
     const r = target.type === "primary" ? addPrimaryExp(c, target.name, sign * n) : addSecondaryExp(c, target.name, sign * n);
     save(r.character);
     if (r.error) toast.warning(r.error);

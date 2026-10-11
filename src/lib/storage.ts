@@ -20,9 +20,9 @@ export function normalizeCharacter(data: any): Character {
   if (typeof data.id === "string") c.id = data.id;
   c.name = String(data.name ?? "").trim() || "Без имени";
   c.race = String(data.race ?? "");
-  if (!(c.race in RACES)) c.race = Object.keys(RACES)[0];
+  if (!(c.race in RACES)) c.race = Object.keys(RACES)[0]!;
   c.characterClass = String(data.characterClass ?? data.class ?? "");
-  if (!(c.characterClass in CLASSES)) c.characterClass = Object.keys(CLASSES)[0];
+  if (!(c.characterClass in CLASSES)) c.characterClass = Object.keys(CLASSES)[0]!;
   const avatar = data.avatar ?? data.icon ?? "";
   c.avatar = typeof avatar === "string" && avatar.startsWith("data:image/") ? avatar : "";
   for (const n of PRIMARY_STAT_NAMES) {

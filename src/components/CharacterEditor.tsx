@@ -24,7 +24,7 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
 
   const adjust = (type: "primary" | "secondary", name: string, dir: 1 | -1) => {
     const r = editorAdjust(hero, freeExp, type, name, dir);
-    if (r.error) return toast.warning(r.error);
+    if (r.error) { toast.warning(r.error); return; }
     setHero(r.character);
     setFreeExp(r.freeExp);
   };
@@ -37,10 +37,10 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
 
   const save = () => {
     const name = hero.name.trim();
-    if (!name || name === "Без имени") return toast.error("Введите имя персонажа");
+    if (!name || name === "Без имени") { toast.error("Введите имя персонажа"); return; }
     if (characters.some((c) => c.id !== hero.id && c.name.toLowerCase() === name.toLowerCase()))
-      return toast.error("Персонаж с таким именем уже существует");
-    if (!isEdit && freeExp > 0) return toast.warning(`Распределите весь опыт: осталось ${freeExp}`);
+      { toast.error("Персонаж с таким именем уже существует"); return; }
+    if (!isEdit && freeExp > 0) { toast.warning(`Распределите весь опыт: осталось ${freeExp}`); return; }
     const final = { ...hero, name };
     if (!isEdit) final.log = [{ id: crypto.randomUUID(), at: new Date().toISOString(), text: "Персонаж создан" }];
     upsert(final);
@@ -57,7 +57,7 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
   };
 
   const Row = ({ type, name }: { type: "primary" | "secondary"; name: string }) => {
-    const s = type === "primary" ? hero.primary[name] : hero.secondary[name];
+    const s = type === "primary" ? hero.primary[name]! : hero.secondary[name]!;
     const maxSub = type === "primary" ? 5 : 3;
     return (
       <div className="flex items-center gap-2 py-1.5">
@@ -117,7 +117,7 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
           <p className="mb-4 text-sm text-muted-foreground">Распределите {STARTING_EXP} опыта. Уровни при создании — от −2 до 4.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {PRIMARY_STAT_NAMES.map((p) => {
-              const M = STAT_META[p];
+              const M = STAT_META[p]!;
               return (
                 <div key={p} className={cn("panel border-l-4 p-3", M.border)}>
                   <div className={cn("mb-1 flex items-center gap-2", M.text)}><M.icon className="h-4 w-4" /></div>
