@@ -163,11 +163,8 @@ function clone(c: Character): Character {
     log: [...c.log],
   };
 }
-export function _unused() {
-  return null;
-}
 
-function pushLog(c: Character, text: string) {
+export function pushLog(c: Character, text: string) {
   c.log.push({ id: uid(), at: new Date().toISOString(), text });
   if (c.log.length > LOG_LIMIT) c.log = c.log.slice(-LOG_LIMIT);
 }
