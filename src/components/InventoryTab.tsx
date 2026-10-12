@@ -233,7 +233,7 @@ function MoneyField({ label, value, className, onChange }: { label: string; valu
   );
 }
 
-function SlotButton({ label, item, onClick }: { label: string; item?: Item; onClick: () => void }) {
+function SlotButton({ label, item, onClick }: { label: string; item?: Item | undefined; onClick: () => void }) {
   return (
     <button onClick={onClick}
       className={cn("rounded-lg border px-3 py-2 text-left transition hover:border-primary/60",
@@ -245,7 +245,7 @@ function SlotButton({ label, item, onClick }: { label: string; item?: Item; onCl
 }
 
 function PickerDialog({ target, occupant, candidates, onClose, onPick, onRemove }: {
-  target: Target | null; occupant?: Item; candidates: Item[]; onClose: () => void; onPick: (id: string) => void; onRemove: (id: string) => void;
+  target: Target | null; occupant?: Item | undefined; candidates: Item[]; onClose: () => void; onPick: (id: string) => void; onRemove: (id: string) => void;
 }) {
   const title = !target ? "" : target.kind === "slot" ? SLOTS.find((s) => s.id === target.slot)!.label
     : target.kind === "hand" ? `${HAND_LABELS[target.hand]} · комплект ${target.set === 0 ? "А" : "Б"}` : `Пояс · ячейка ${target.index + 1}`;
