@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  ArrowLeft, Backpack, Download, Heart, History, MoreVertical, NotebookPen, Pencil, Shield, Swords, Trash2,
+  ArrowLeft, Backpack, Download, History, MoreVertical, NotebookPen, Pencil, Shield, Swords, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HeroAvatar } from "@/components/Avatar";
+import { InventoryTab } from "@/components/InventoryTab";
 import { useCharacters } from "@/lib/characters-store";
 import {
   PRIMARY_STAT_NAMES, SECONDARY_GROUPS, SKILL_TO_PRIMARY, addPrimaryExp, addSecondaryExp, getArmorClass,
-  getCharacterLevel, getHpComponents, primaryRequired, secondaryRequired, uid, type Character,
+  getCharacterLevel, primaryRequired, secondaryRequired, uid, type Character,
 } from "@/lib/rules";
 import { exportCharacter } from "@/lib/storage";
 import { STAT_META, fmtDate } from "@/lib/stat-meta";
@@ -54,7 +55,6 @@ function CharacterPage() {
   if (!ready) return null;
   const c = get(id);
   if (!c) return <div className="p-10 text-center">Персонаж не найден. <Link to="/" className="text-primary">На главную</Link></div>;
-  const hp = getHpComponents(c);
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-28 pt-4 sm:pb-10">
@@ -74,24 +74,17 @@ function CharacterPage() {
         </DropdownMenu>
       </div>
 
-      <header className="panel mb-5 flex flex-col items-center gap-4 p-5 sm:flex-row">
+      <header className="panel mb-5 sm:mb-5 flex flex-col items-center gap-4 p-5 sm:flex-row">
         <HeroAvatar src={c.avatar} name={c.name} className="h-24 w-24" />
         <div className="flex-1 text-center sm:text-left">
           <h1 className="text-3xl font-bold text-gold">{c.name}</h1>
           <p className="text-muted-foreground">{c.race} · {c.characterClass}</p>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Badge label="Уровень" value={getCharacterLevel(c)} icon={<Swords className="h-4 w-4 text-primary" />} />
-          <Badge
-            label="HP" value={hp.Итого} icon={<Heart className="h-4 w-4 text-destructive" />}
-            title={`Раса ${hp.Раса} + Класс ${hp.Класс} + Тел. ${hp.Телосложение} + Стойк. ${hp.Стойкость} + Сила ${hp.Сила}`}
-          />
           <Badge label="КБ" value={getArmorClass(c)} icon={<Shield className="h-4 w-4 text-primary" />} title="10 + уровень Ловкости" />
         </div>
       </header>
-      <p className="mb-4 text-center text-xs text-muted-foreground sm:text-left">
-        HP: раса {hp.Раса} · класс {hp.Класс} · телосложение {fmtSigned(hp.Телосложение)} · стойкость {fmtSigned(hp.Стойкость)} · сила {fmtSigned(hp.Сила)}
-      </p>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur sm:static sm:mb-5 sm:flex sm:gap-2 sm:border-0 sm:bg-transparent">
         {TABS.map((t) => (
@@ -111,13 +104,7 @@ function CharacterPage() {
       {tab === "stats" && <StatsTab c={c} onPick={setTarget} />}
       {tab === "history" && <HistoryTab c={c} />}
       {tab === "notes" && <NotesTab c={c} save={upsert} />}
-      {tab === "inventory" && (
-        <div className="panel grid place-items-center gap-3 p-12 text-center">
-          <Backpack className="h-12 w-12 text-primary/70" />
-          <h2 className="text-xl">Инвентарь</h2>
-          <p className="max-w-sm text-sm text-muted-foreground">Сумка пока застёгнута. Здесь появятся предметы, снаряжение и золото героя.</p>
-        </div>
-      )}
+      {tab === "inventory" && <InventoryTab c={c} save={upsert} />}
 
       <ExpDialog c={c} target={target} onClose={() => setTarget(null)} save={upsert} />
 
@@ -137,7 +124,6 @@ function CharacterPage() {
   );
 }
 
-const fmtSigned = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
 function Badge({ label, value, icon, title }: { label: string; value: number; icon: React.ReactNode; title?: string }) {
   return (
@@ -205,7 +191,7 @@ function StatsTab({ c, onPick }: { c: Character; onPick: (t: { type: "primary" |
   );
 }
 
-const QUICK = [10, 25, 50, 100];
+const QUICK = [1, 5, 25, 100];
 
 function ExpDialog({ c, target, onClose, save }: {
   c: Character; target: { type: "primary" | "secondary"; name: string } | null; onClose: () => void; save: (c: Character) => void;
@@ -264,35 +250,43 @@ function HistoryTab({ c }: { c: Character }) {
 }
 
 function NotesTab({ c, save }: { c: Character; save: (c: Character) => void }) {
+  const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
   const [editText, setEditText] = useState("");
   const add = () => {
-    if (!text.trim()) return;
-    save({ ...c, notes: [{ id: uid(), at: new Date().toISOString(), text: text.trim() }, ...c.notes] });
+    if (!text.trim() && !title.trim()) return;
+    save({ ...c, notes: [{ id: uid(), at: new Date().toISOString(), title: title.trim(), text: text.trim() }, ...c.notes] });
+    setTitle("");
     setText("");
   };
   return (
     <div className="grid gap-4">
       <div className="panel grid gap-3 p-4">
-        <Textarea rows={3} placeholder="Новая заметка…" value={text} onChange={(e) => setText(e.target.value)} />
+        <Input placeholder="Тема заметки" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+        <Textarea rows={3} placeholder="Текст заметки…" value={text} onChange={(e) => setText(e.target.value)} />
         <Button variant="gold" className="justify-self-end" onClick={add}>Добавить заметку</Button>
       </div>
       {c.notes.map((n) => (
         <article key={n.id} className="panel p-4">
-          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{fmtDate(n.at)}</span>
-            <span className="flex gap-1">
-              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Изменить" onClick={() => { setEditing(n.id); setEditText(n.text); }}><Pencil /></Button>
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className={cn("text-lg", n.title ? "text-gold" : "text-muted-foreground")}>{n.title || "Без темы"}</h3>
+              <div className="text-xs text-muted-foreground">{fmtDate(n.at)}</div>
+            </div>
+            <span className="flex shrink-0 gap-1">
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Изменить" onClick={() => { setEditing(n.id); setEditTitle(n.title); setEditText(n.text); }}><Pencil /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Удалить" onClick={() => save({ ...c, notes: c.notes.filter((x) => x.id !== n.id) })}><Trash2 /></Button>
             </span>
           </div>
           {editing === n.id ? (
             <div className="grid gap-2">
+              <Input placeholder="Тема заметки" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
               <Textarea rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setEditing(null)}>Отмена</Button>
-                <Button variant="gold" onClick={() => { save({ ...c, notes: c.notes.map((x) => (x.id === n.id ? { ...x, text: editText } : x)) }); setEditing(null); }}>Сохранить</Button>
+                <Button variant="gold" onClick={() => { save({ ...c, notes: c.notes.map((x) => (x.id === n.id ? { ...x, title: editTitle.trim(), text: editText } : x)) }); setEditing(null); }}>Сохранить</Button>
               </div>
             </div>
           ) : (

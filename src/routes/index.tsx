@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef } from "react";
-import { Heart, Plus, Shield, Trash2, Upload } from "lucide-react";
+import { Plus, Shield, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { HeroAvatar } from "@/components/Avatar";
 import { useCharacters } from "@/lib/characters-store";
-import { getArmorClass, getCharacterLevel, getHp, uid } from "@/lib/rules";
+import { getArmorClass, getCharacterLevel, uid } from "@/lib/rules";
 import { normalizeCharacter } from "@/lib/storage";
 
 export const Route = createFileRoute("/")({
@@ -73,7 +73,6 @@ function Index() {
               <h2 className="truncate text-lg font-semibold">{c.name}</h2>
               <p className="text-sm text-muted-foreground">{c.race} · {c.characterClass} · ур. {getCharacterLevel(c)}</p>
               <div className="mt-1 flex gap-4 text-sm">
-                <span className="flex items-center gap-1"><Heart className="h-4 w-4 text-destructive" />{getHp(c)}</span>
                 <span className="flex items-center gap-1"><Shield className="h-4 w-4 text-primary" />{getArmorClass(c)}</span>
               </div>
             </div>

@@ -9,38 +9,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { HeroAvatar } from "@/components/Avatar";
 import { useCharacters } from "@/lib/characters-store";
 import {
-  CLASSES, PRIMARY_STAT_NAMES, RACES, SECONDARY_GROUPS, STARTING_EXP, editorAdjust, newCharacter, type Character,
+  CLASSES, PRIMARY_STAT_NAMES, RACES, SECONDARY_GROUPS, STARTING_EXP, computeFreeExp, editorAdjust, newCharacter, type Character,
 } from "@/lib/rules";
 import { resizeImage } from "@/lib/storage";
 import { STAT_META } from "@/lib/stat-meta";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function CharacterEditor({ initial }: { initial?: Character }) {
   const isEdit = !!initial;
   const { characters, upsert } = useCharacters();
   const navigate = useNavigate();
   const [hero, setHero] = useState<Character>(() => initial ?? newCharacter());
-  const [freeExp, setFreeExp] = useState(STARTING_EXP);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const freeExp = computeFreeExp(hero);
 
   const adjust = (type: "primary" | "secondary", name: string, dir: 1 | -1) => {
-    const r = editorAdjust(hero, freeExp, type, name, dir);
+    const r = editorAdjust(hero, type, name, dir);
     if (r.error) { toast.warning(r.error); return; }
     setHero(r.character);
-    setFreeExp(r.freeExp);
   };
 
   const reset = () => {
     const fresh = newCharacter();
     setHero({ ...hero, primary: fresh.primary, secondary: fresh.secondary });
-    setFreeExp(STARTING_EXP);
+  };
+
+  const validate = () => {
+    const name = hero.name.trim();
+    if (!name || name === "Без имени") { toast.error("Введите имя персонажа"); return false; }
+    if (characters.some((c) => c.id !== hero.id && c.name.toLowerCase() === name.toLowerCase()))
+      { toast.error("Персонаж с таким именем уже существует"); return false; }
+    if (!isEdit && freeExp < 0) { toast.error(`Перерасход ${-freeExp} опыта — понизьте другие характеристики`); return false; }
+    return true;
+  };
+
+  const onSubmit = () => {
+    if (!validate()) return;
+    if (!isEdit && freeExp > 0) setConfirmOpen(true);
+    else save();
   };
 
   const save = () => {
     const name = hero.name.trim();
-    if (!name || name === "Без имени") { toast.error("Введите имя персонажа"); return; }
-    if (characters.some((c) => c.id !== hero.id && c.name.toLowerCase() === name.toLowerCase()))
-      { toast.error("Персонаж с таким именем уже существует"); return; }
-    if (!isEdit && freeExp > 0) { toast.warning(`Распределите весь опыт: осталось ${freeExp}`); return; }
     const final = { ...hero, name };
     if (!isEdit) final.log = [{ id: crypto.randomUUID(), at: new Date().toISOString(), text: "Персонаж создан" }];
     upsert(final);
@@ -114,7 +128,7 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
             <h2 className="text-xl">Стартовый опыт</h2>
             <Button variant="ghost" size="sm" onClick={reset}><RotateCcw /> Сбросить</Button>
           </div>
-          <p className="mb-4 text-sm text-muted-foreground">Распределите {STARTING_EXP} опыта. Уровни при создании — от −2 до 4.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Распределите {STARTING_EXP} опыта. Уровни при создании — от −2 до 4; понижение ниже 0 возвращает опыт.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {PRIMARY_STAT_NAMES.map((p) => {
               const M = STAT_META[p]!;
@@ -136,15 +150,27 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           {!isEdit && (
             <div className="flex-1">
-              <div className="text-xs text-muted-foreground">Свободный опыт</div>
-              <div className={cn("font-display text-2xl tabular-nums", freeExp === 0 ? "text-success" : "text-gold")}>{freeExp}</div>
+              <div className="text-xs text-muted-foreground">{freeExp < 0 ? "Перерасход опыта" : "Свободный опыт"}</div>
+              <div className={cn("font-display text-2xl tabular-nums", freeExp < 0 ? "text-destructive" : freeExp === 0 ? "text-success" : "text-gold")}>{freeExp}</div>
             </div>
           )}
-          <Button variant="gold" size="lg" className={cn(isEdit && "w-full")} onClick={save}>
+          <Button variant="gold" size="lg" className={cn(isEdit && "w-full")} onClick={onSubmit} disabled={!isEdit && freeExp < 0}>
             {isEdit ? "Сохранить" : "Создать"}
           </Button>
         </div>
       </div>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Остался опыт</AlertDialogTitle>
+            <AlertDialogDescription>Осталось {freeExp} опыта. Вы уверены, что хотите создать персонажа?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={save}>Создать</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
