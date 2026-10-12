@@ -12,8 +12,8 @@ export interface Item {
   id: string;
   name: string;
   category: ItemCategory;
-  slot?: ItemSlotKind;
-  beltCapacity?: number;
+  slot?: ItemSlotKind | undefined;
+  beltCapacity?: number | undefined;
   quantity: number;
   description: string;
 }
