@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addPrimaryExp, addSecondaryExp, editorAdjust, getArmorClass, getHpComponents, newCharacter } from ".";
+import { addPrimaryExp, addSecondaryExp, computeFreeExp, editorAdjust, getArmorClass, getHpComponents, newCharacter, type Character } from ".";
 
 describe("game rules", () => {
   it("primary sublevel up carries over remainder", () => {
@@ -52,19 +52,44 @@ describe("game rules", () => {
     expect(getArmorClass(c)).toBe(13);
   });
 
-  it("editor step costs table value and refunds it", () => {
-    const up = editorAdjust(newCharacter(), 1000, "primary", "Сила", 1);
-    expect(up.freeExp).toBe(960);
-    const down = editorAdjust(up.character, up.freeExp, "primary", "Сила", -1);
-    expect(down.freeExp).toBe(1000);
-    const below = editorAdjust(newCharacter(), 1000, "primary", "Сила", -1);
-    expect(below.freeExp).toBe(1070);
-    expect(below.character.primary["Сила"]).toEqual({ level: -1, subIndex: 4, progress: 0 });
+  const step = (c: Character, type: "primary" | "secondary", name: string, dir: 1 | -1, n = 1) => {
+    for (let i = 0; i < n; i++) c = editorAdjust(c, type, name, dir).character;
+    return c;
+  };
+
+  it("editor: first primary sublevel costs 40, below zero refunds 70", () => {
+    expect(computeFreeExp(step(newCharacter(), "primary", "Сила", 1))).toBe(960);
+    expect(computeFreeExp(step(newCharacter(), "primary", "Сила", -1))).toBe(1070);
+  });
+
+  it("editor: raising a skill then lowering it back returns exactly 1000", () => {
+    let c = step(newCharacter(), "secondary", "Атлетика", 1, 7);
+    c = step(c, "secondary", "Атлетика", -1, 7);
+    expect(computeFreeExp(c)).toBe(1000);
+  });
+
+  it("editor: no up/down sequence ever yields more than the refund of below-zero levels", () => {
+    let c = newCharacter();
+    for (let i = 0; i < 50; i++) {
+      c = step(c, "secondary", "Магия", 1, 3);
+      c = step(c, "secondary", "Магия", -1, 3);
+      c = step(c, "secondary", "Магия", 1);
+      c = step(c, "secondary", "Магия", -1);
+    }
+    expect(computeFreeExp(c)).toBe(1000);
+  });
+
+  it("editor: overspending makes free exp negative", () => {
+    const c = step(newCharacter(), "primary", "Сила", 1, 20);
+    expect(computeFreeExp(c)).toBeLessThan(0);
   });
 
   it("editor limits levels to -2..4", () => {
     const c = newCharacter();
     c.primary["Сила"] = { level: 4, subIndex: 0, progress: 0 };
-    expect(editorAdjust(c, 1000, "primary", "Сила", 1).error).not.toBeNull();
+    expect(editorAdjust(c, "primary", "Сила", 1).error).not.toBeNull();
+    const low = newCharacter();
+    low.primary["Сила"] = { level: -2, subIndex: 0, progress: 0 };
+    expect(editorAdjust(low, "primary", "Сила", -1).error).not.toBeNull();
   });
 });
