@@ -1,3 +1,4 @@
+import { emptyInventory, type Inventory } from "./inventory";
 // Game rules ported 1:1 from the original app_2.py. Pure functions, no UI.
 
 export const PRIMARY_STAT_NAMES = ["Сила", "Ловкость", "Телосложение", "Интеллект", "Мудрость", "Харизма"] as const;
@@ -79,7 +80,7 @@ const LOG_LIMIT = 200;
 
 export interface StatState { level: number; subIndex: number; progress: number }
 export interface LogEntry { id: string; at: string; text: string }
-export interface Note { id: string; at: string; text: string }
+export interface Note { id: string; at: string; title: string; text: string }
 export interface Character {
   id: string;
   name: string;
@@ -90,7 +91,7 @@ export interface Character {
   secondary: Record<string, StatState>;
   log: LogEntry[];
   notes: Note[];
-  inventory: unknown[];
+  inventory: Inventory;
   createdAt: string;
   updatedAt: string;
 }
@@ -109,7 +110,7 @@ export function newCharacter(): Character {
     secondary: Object.fromEntries(SECONDARY_SKILLS.map((n) => [n, { level: 0, subIndex: 0, progress: 0 }])),
     log: [],
     notes: [],
-    inventory: [],
+    inventory: emptyInventory(),
     createdAt: now,
     updatedAt: now,
   };
@@ -163,7 +164,7 @@ function clone(c: Character): Character {
   };
 }
 
-function pushLog(c: Character, text: string) {
+export function pushLog(c: Character, text: string) {
   c.log.push({ id: uid(), at: new Date().toISOString(), text });
   if (c.log.length > LOG_LIMIT) c.log = c.log.slice(-LOG_LIMIT);
 }
@@ -295,34 +296,46 @@ export function addSecondaryExp(c: Character, name: string, amount: number) {
   return { character: next, error };
 }
 
-/** Starting-exp editor step (+1/-1 sublevel), as in the original editor. */
+/** Net exp a stat state costs relative to (0, 0). Negative = refund for going below zero. */
+export function stateCost(type: "primary" | "secondary", level: number, sub: number): number {
+  const table = type === "primary" ? PRIMARY_EXP_TABLE : SECONDARY_EXP_TABLE;
+  const row = (l: number) => table[l] ?? [];
+  let total = 0;
+  if (level >= 0) {
+    for (let l = 0; l < level; l++) total += row(l).reduce((a, b) => a + b, 0);
+    total += row(level).slice(0, sub).reduce((a, b) => a + b, 0);
+  } else {
+    total -= row(level).slice(sub).reduce((a, b) => a + b, 0);
+    for (let l = level + 1; l < 0; l++) total -= row(l).reduce((a, b) => a + b, 0);
+  }
+  return total;
+}
+
+/** Free starting exp, always derived from current levels (cannot drift). */
+export function computeFreeExp(c: Character): number {
+  let spent = 0;
+  for (const s of Object.values(c.primary)) spent += stateCost("primary", s.level, s.subIndex);
+  for (const s of Object.values(c.secondary)) spent += stateCost("secondary", s.level, s.subIndex);
+  return STARTING_EXP - spent;
+}
+
+/** Starting editor step (+1/-1 sublevel). Only level limits apply; free exp may go negative. */
 export function editorAdjust(
-  c: Character, freeExp: number, type: "primary" | "secondary", name: string, direction: 1 | -1,
-): { character: Character; freeExp: number; error: string | null } {
+  c: Character, type: "primary" | "secondary", name: string, direction: 1 | -1,
+): { character: Character; error: string | null } {
   const maxSub = type === "primary" ? 4 : 2;
   const next = clone(c);
   const group = type === "primary" ? next.primary : next.secondary;
   let { level, subIndex: sub } = group[name]!;
   if (direction > 0) {
-    if (level >= EDITOR_MAX_LEVEL) return { character: c, freeExp, error: `${name} уже на максимальном уровне ${EDITOR_MAX_LEVEL}` };
-    const cost = sublevelCost(type, level, sub);
-    if (freeExp < cost) return { character: c, freeExp, error: `Недостаточно опыта: нужно ${cost}` };
-    freeExp -= cost;
+    if (level >= EDITOR_MAX_LEVEL) return { character: c, error: `${name} уже на максимальном уровне ${EDITOR_MAX_LEVEL}` };
     sub += 1;
     if (sub > maxSub) { level += 1; sub = 0; }
   } else {
-    if (level <= EDITOR_MIN_LEVEL && sub === 0) return { character: c, freeExp, error: `${name} уже на минимальном уровне` };
-    let cost: number;
-    if (sub > 0) {
-      cost = sublevelCost(type, level, sub);
-      sub -= 1;
-    } else {
-      cost = sublevelCost(type, level - 1, maxSub);
-      level -= 1;
-      sub = maxSub;
-    }
-    freeExp += cost;
+    if (level <= EDITOR_MIN_LEVEL && sub === 0) return { character: c, error: `${name} уже на минимальном уровне` };
+    if (sub > 0) sub -= 1;
+    else { level -= 1; sub = maxSub; }
   }
   group[name] = { level, subIndex: sub, progress: 0 };
-  return { character: next, freeExp, error: null };
+  return { character: next, error: null };
 }

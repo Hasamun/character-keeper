@@ -2,6 +2,7 @@ import {
   CLASSES, PRIMARY_MAX_LEVEL, PRIMARY_MIN_LEVEL, PRIMARY_STAT_NAMES, RACES, SECONDARY_MAX_LEVEL,
   SECONDARY_MIN_LEVEL, SECONDARY_SKILLS, newCharacter, uid, type Character, type StatState,
 } from "./rules";
+import { normalizeInventory } from "./rules/inventory";
 
 const KEY = "rpg-tracker:characters:v1";
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -41,10 +42,12 @@ export function normalizeCharacter(data: any): Character {
   }
   if (Array.isArray(data.notes)) {
     c.notes = data.notes.map((x: any) =>
-      typeof x === "string" ? { id: uid(), at: now, text: x } : { id: String(x?.id ?? uid()), at: String(x?.at ?? now), text: String(x?.text ?? "") },
+      typeof x === "string"
+        ? { id: uid(), at: now, title: "", text: x }
+        : { id: String(x?.id ?? uid()), at: String(x?.at ?? now), title: String(x?.title ?? ""), text: String(x?.text ?? "") },
     );
   }
-  c.inventory = Array.isArray(data.inventory) ? data.inventory : [];
+  c.inventory = normalizeInventory(data.inventory);
   c.createdAt = String(data.createdAt ?? now);
   c.updatedAt = String(data.updatedAt ?? now);
   return c;

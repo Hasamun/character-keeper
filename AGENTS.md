@@ -12,3 +12,5 @@
 ## Project rules
 - Game rules live as pure functions in `src/lib/rules/` and are covered by tests; UI never reimplements them — keeps the ported system faithful to the original.
 - Characters persist in browser localStorage via `src/lib/storage.ts` + `CharactersProvider`, read only after mount — single-user, no backend, avoids hydration mismatch.
+- Starting free exp in the creation editor is always derived from current levels (`computeFreeExp`), never kept as a running counter — prevents up/down exploits.
+- Inventory items always stay in `inventory.items`; slots, weapon sets and belt only hold item ids (`src/lib/rules/inventory.ts`) — one source of truth, safe deletes.
