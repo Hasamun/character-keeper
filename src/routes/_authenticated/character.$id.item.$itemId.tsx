@@ -8,6 +8,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ItemUseActions } from "@/components/ItemUseDialog";
+import { ItemComparison } from "@/components/ItemComparison";
 import { ItemEditor } from "@/components/ItemEditor";
 import { itemTypeLabel } from "@/components/ItemCard";
 import { useCharacters } from "@/lib/characters-store";
@@ -49,6 +51,7 @@ function ItemPage() {
   const { id, itemId } = Route.useParams();
   const { ready, get, upsert } = useCharacters();
   const navigate = useNavigate();
+  const [comparing, setComparing] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [notes, setNotes] = useState<string | null>(null);
@@ -96,6 +99,7 @@ function ItemPage() {
                 if (res.error) toast.error(res.error); else commit(res.inventory, res.log);
               }}>{item.category === "consumable" ? "На пояс" : "Надеть"}</Button>
             )}
+            <Button variant="outline" size="sm" onClick={() => setComparing(true)}>Сравнить</Button>
             <Button variant="outline" size="sm" onClick={() => setEditing(item)}><Pencil /> Изменить</Button>
             <Button variant="outline" size="sm" onClick={() => {
               const nid = uid();
@@ -107,10 +111,13 @@ function ItemPage() {
         </div>
       </div>
 
+      <ItemUseActions c={c} item={item} save={upsert} afterUse={() => { if (item.quantity === 1 && item.category === "consumable" && !item.effects?.some(e => e.charges != null)) back(); }} />
+      <ItemComparison c={c} item={item} open={comparing} onClose={() => setComparing(false)} />
+
       {unmet.length > 0 && (
         <div className="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <div>Требования не выполнены: {unmet.map((u) => `${u.stat} ${u.min} (у героя ${u.have}, штраф ${u.have - u.min})`).join(", ")}. Надеть всё равно можно.</div>
+          <div>Требования не выполнены: {unmet.map((u) => `${u.stat} ${u.min} (у героя ${u.have})`).join(", ")}. Надеть всё равно можно.</div>
         </div>
       )}
 
@@ -120,7 +127,7 @@ function ItemPage() {
         {w && <>
           <Row k="Урон" v={`${w.damage || "—"}${w.damageType ? ` (${w.damageType})` : ""}`} />
           <Row k="Бонус атаки" v={w.attackBonus > 0 ? `+${w.attackBonus}` : w.attackBonus} />
-          <Row k="Урон зависит от" v={ATTACK_MODE_LABELS[w.attackMode]} />
+          <Row k="Атака зависит от" v={ATTACK_MODE_LABELS[w.attackMode]} />
           <Row k="Хват" v={w.twoHanded ? "Двуручное" : "Одноручное"} />
         </>}
         {a && <>
@@ -140,14 +147,14 @@ function ItemPage() {
               <li key={e.id} className="rounded-md bg-muted/30 p-2 text-sm">
                 <div className="font-medium">{effectLabel(e)} <span className="text-xs text-muted-foreground">· {EFFECT_KIND_LABELS[e.kind]}</span></div>
                 <div className="text-xs text-muted-foreground">
-                  {[e.condition && `Условие: ${e.condition}`, e.duration && `Длительность: ${e.duration}`, e.charges != null && `Заряды: ${e.charges}`].filter(Boolean).join(" · ")}
+                  {[e.condition && `Условие: ${e.condition}`, e.duration && `Длительность: ${e.duration}`, e.charges != null && `Заряды: ${e.remainingCharges ?? e.charges}/${e.charges}`].filter(Boolean).join(" · ")}
                 </div>
                 {e.description && <p className="mt-1 text-xs">{e.description}</p>}
               </li>
             ))}
           </ul>
         ) : <p className="text-sm text-muted-foreground">Нет эффектов.</p>}
-        <p className="mt-2 text-xs text-muted-foreground">Автоматический учёт эффектов в характеристиках героя появится на следующем шаге.</p>
+
       </Section>
 
       <Section title="Требования">

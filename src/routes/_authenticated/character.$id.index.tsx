@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HeroAvatar } from "@/components/Avatar";
+import { DerivedStats } from "@/components/DerivedStats";
+import { deriveCharacter } from "@/lib/rules/derived";
 import { InventoryTab } from "@/components/InventoryTab";
 import { useCharacters } from "@/lib/characters-store";
 import {
@@ -59,6 +61,7 @@ function CharacterPage() {
   const c = get(id);
   if (!c) return <div className="p-10 text-center">Персонаж не найден. <Link to="/" className="text-primary">На главную</Link></div>;
 
+  const derived = deriveCharacter(c);
   return (
     <main className="mx-auto max-w-5xl px-4 pb-28 pt-4 sm:pb-10">
       <div className="mb-4 flex items-center justify-between">
@@ -85,8 +88,8 @@ function CharacterPage() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           <Badge label="Уровень" value={getCharacterLevel(c)} icon={<Swords className="h-4 w-4 text-primary" />} />
-          <Badge label="HP" value={getHp(c)} icon={<Heart className="h-4 w-4 text-destructive" />} />
-          <Badge label="КБ" value={getArmorClass(c)} icon={<Shield className="h-4 w-4 text-primary" />} />
+          <Badge label="HP" value={derived.hp ?? "—"} icon={<Heart className="h-4 w-4 text-destructive" />} />
+          <Badge label="КБ" value={derived.ac} icon={<Shield className="h-4 w-4 text-primary" />} />
         </div>
       </header>
 
@@ -105,7 +108,7 @@ function CharacterPage() {
         ))}
       </nav>
 
-      {tab === "main" && <NotesTab c={c} save={upsert} />}
+      {tab === "main" && <><DerivedStats c={c} save={upsert} /><NotesTab c={c} save={upsert} /></>}
       {tab === "stats" && <StatsTab c={c} onPick={setTarget} />}
       {tab === "skills" && (
         <div className="panel grid place-items-center gap-3 p-12 text-center">
@@ -136,7 +139,7 @@ function CharacterPage() {
 }
 
 
-function Badge({ label, value, icon, title }: { label: string; value: number; icon: React.ReactNode; title?: string }) {
+function Badge({ label, value, icon, title }: { label: string; value: number | string; icon: React.ReactNode; title?: string }) {
   return (
     <div title={title} className="min-w-20 rounded-lg border border-border bg-muted/50 px-3 py-2 text-center">
       <div className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">{icon}{label}</div>
@@ -155,6 +158,7 @@ function ProgressBar({ value, max, className }: { value: number; max: number | n
 }
 
 function StatsTab({ c, onPick }: { c: Character; onPick: (t: { type: "primary" | "secondary"; name: string }) => void }) {
+  const derived = deriveCharacter(c);
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {PRIMARY_STAT_NAMES.map((p) => {
@@ -170,7 +174,7 @@ function StatsTab({ c, onPick }: { c: Character; onPick: (t: { type: "primary" |
                   <h3 className="text-base font-semibold">{p}</h3>
                   <p className="text-xs text-muted-foreground">подуровень {s.subIndex + 1}/5</p>
                 </div>
-                <div className={cn("font-display text-3xl tabular-nums", M.text)}>{s.level}</div>
+                <div className={cn("font-display text-3xl tabular-nums", M.text)}>{derived.primary[p]}{derived.primary[p] !== s.level && <div className="text-xs text-muted-foreground">база {s.level}</div>}</div>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <ProgressBar value={s.progress} max={req} className={M.bg} />
@@ -185,7 +189,7 @@ function StatsTab({ c, onPick }: { c: Character; onPick: (t: { type: "primary" |
                   <button key={sk} onClick={() => onPick({ type: "secondary", name: sk })} className="block w-full px-4 py-2 text-left transition hover:bg-accent/30">
                     <div className="flex items-center justify-between text-sm">
                       <span>{sk}</span>
-                      <span className="tabular-nums"><span className="text-xs text-muted-foreground">{ss.subIndex + 1}/3 · </span><b>{ss.level}</b></span>
+                      <span className="tabular-nums"><span className="text-xs text-muted-foreground">{ss.subIndex + 1}/3 · </span><b>{derived.secondary[sk]}</b>{derived.secondary[sk] !== ss.level && <span className="text-xs text-muted-foreground"> · база {ss.level}</span>}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       <ProgressBar value={ss.progress} max={r} className={cn(M.bg, "opacity-70")} />

@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ItemUseActions } from "@/components/ItemUseDialog";
+import { ItemComparison } from "@/components/ItemComparison";
 import { ItemCard, ItemRow } from "@/components/ItemCard";
 import { ItemEditor, blankItem } from "@/components/ItemEditor";
 import { pushLog, type Character } from "@/lib/rules";
@@ -25,6 +27,7 @@ const MONEY_STYLE: Record<keyof Money, string> = {
 
 export function InventoryTab({ c, save }: { c: Character; save: (c: Character) => void }) {
   const inv = c.inventory;
+  const [comparing, setComparing] = useState<Item | null>(null);
   const [filter, setFilter] = useState<ItemCategory | "all">("all");
   const [editing, setEditing] = useState<Item | null>(null);
   const [picking, setPicking] = useState<Target | null>(null);
@@ -96,7 +99,8 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {inv.belt.map((_, i) => {
                 const t: Target = { kind: "belt", index: i };
-                return <SlotButton key={i} label={`Ячейка ${i + 1}`} item={occupant(t)} onClick={() => setPicking(t)} />;
+                const item = occupant(t);
+                return <div key={i} className="grid content-start gap-2"><SlotButton label={`Ячейка ${i + 1}`} item={item} onClick={() => setPicking(t)} />{item && <ItemUseActions c={c} item={item} save={save} />}</div>;
               })}
             </div>
           </div>
@@ -157,15 +161,16 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
           <p className="py-8 text-center text-sm text-muted-foreground">{inv.items.length ? "Ничего не найдено." : "Здесь пока пусто."}</p>
         ) : view === "grid" ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {shown.map((i) => <ItemCard key={i.id} i={i} equipped={isEquipped(inv, i.id)} onClick={() => open(i.id)} />)}
+            {shown.map((i) => <div key={i.id} className="grid content-start gap-1"><ItemCard i={i} equipped={isEquipped(inv, i.id)} onClick={() => open(i.id)} /><Button size="sm" variant="ghost" onClick={() => setComparing(i)}>Сравнить</Button></div>)}
           </div>
         ) : (
           <div className="grid gap-2">
-            {shown.map((i) => <ItemRow key={i.id} i={i} equipped={isEquipped(inv, i.id)} onClick={() => open(i.id)} />)}
+            {shown.map((i) => <div key={i.id} className="grid gap-1"><ItemRow i={i} equipped={isEquipped(inv, i.id)} onClick={() => open(i.id)} /><Button size="sm" variant="ghost" onClick={() => setComparing(i)}>Сравнить</Button></div>)}
           </div>
         )}
       </section>
 
+      {comparing && <ItemComparison key={comparing.id} c={c} item={comparing} open onClose={() => setComparing(null)} />}
       <PickerDialog
         target={picking}
         occupant={picking ? occupant(picking) : undefined}
