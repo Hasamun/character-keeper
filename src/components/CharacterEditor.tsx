@@ -53,12 +53,11 @@ export function CharacterEditor({ initial }: { initial?: Character }) {
     else save();
   };
 
-  const save = () => {
+  const save = async () => {
     const name = hero.name.trim();
     const final = { ...hero, name };
     if (!isEdit) final.log = [{ id: crypto.randomUUID(), at: new Date().toISOString(), text: "Персонаж создан" }];
-    upsert(final);
-    navigate({ to: "/character/$id", params: { id: final.id } });
+    try { await upsert(final); navigate({ to: "/character/$id", params: { id: final.id } }); } catch { /* Keep the user's draft visible on conflict. */ }
   };
 
   const onAvatar = async (file?: File) => {

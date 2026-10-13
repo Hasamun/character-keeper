@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { accountQuery } from "./catalog-queries";
+import { saveOwnedCharacter } from './sharing.functions';
+import { useServerFn } from '@tanstack/react-start';
 import { clearItemImageCache } from "./item-images";
 import { Button } from "@/components/ui/button";
 import { AccountBar } from "@/components/AccountBar";
@@ -30,6 +32,7 @@ const toRow = (c: Character, ownerId: string) => ({
 });
 
 export function CharactersProvider({ userId, children }: { userId: string; children: ReactNode }) {
+  const saveOwned = useServerFn(saveOwnedCharacter);
   const access = useQuery({ ...accountQuery(), refetchInterval: 15000, refetchIntervalInBackground: true });
   const allowed = access.data?.active === true;
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -38,14 +41,16 @@ export function CharactersProvider({ userId, children }: { userId: string; child
   const [migrating, setMigrating] = useState(false);
   // Serialize writes per character so a slow request never overwrites a newer one.
   const queue = useRef<Map<string, Promise<unknown>>>(new Map());
+  const versions = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (!allowed) { setCharacters([]); setReady(false); clearItemImageCache(); return; }
     let alive = true;
     (async () => {
-      const { data, error } = await supabase.from("characters").select("data").order("created_at");
+      const { data, error } = await supabase.from("characters").select("id,data,updated_at").order("created_at");
       if (!alive) return;
       if (error) toast.error("Не удалось загрузить героев");
+      versions.current = new Map((data ?? []).map(r => [r.id, r.updated_at]));
       setCharacters((data ?? []).flatMap((r) => { try { return [normalizeCharacter(r.data)]; } catch { return []; } }));
       setReady(true);
       setLocalHeroes(loadAll());
@@ -56,12 +61,14 @@ export function CharactersProvider({ userId, children }: { userId: string; child
   const persist = useCallback((c: Character) => {
     const prev = (queue.current.get(c.id) ?? Promise.resolve()).catch(() => undefined);
     const next = prev.then(async () => {
-      const { error } = await supabase.from("characters").upsert(toRow(c, userId));
-      if (error) { toast.error("Не удалось сохранить изменения"); throw new Error("Не удалось сохранить изменения"); }
+      try {
+        const r = await saveOwned({data:{character:c,version:versions.current.get(c.id) ?? null}});
+        versions.current.set(c.id,r.version);
+      } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось сохранить изменения"); throw error; }
     });
     queue.current.set(c.id, next);
     return next;
-  }, [userId]);
+  }, [saveOwned]);
 
   const migrate = async () => {
     setMigrating(true);
@@ -71,6 +78,7 @@ export function CharactersProvider({ userId, children }: { userId: string; child
     setMigrating(false);
     if (error) { toast.error("Перенос не удался, герои остались в браузере"); return; }
     clearLocal();
+    for (const row of rows) versions.current.set(row.id,row.updated_at);
     setCharacters((l) => [...l, ...rows.map((r) => normalizeCharacter(r.data))]);
     setLocalHeroes([]);
     toast.success(`Перенесено героев: ${rows.length}`);
@@ -79,8 +87,9 @@ export function CharactersProvider({ userId, children }: { userId: string; child
   const value: Store = {
     refresh: async () => {
       if (!allowed) return;
-      const { data, error } = await supabase.from("characters").select("data").order("created_at");
+      const { data, error } = await supabase.from("characters").select("id,data,updated_at").order("created_at");
       if (error) throw new Error("Не удалось обновить героев");
+      versions.current = new Map((data ?? []).map(r => [r.id,r.updated_at]));
       setCharacters((data ?? []).map(r => normalizeCharacter(r.data)));
     },
     ready,

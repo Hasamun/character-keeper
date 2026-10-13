@@ -8,6 +8,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { HeroAvatar } from "@/components/Avatar";
+import { SharedHome } from '@/components/CharacterAccess';
 import { useCharacters } from "@/lib/characters-store";
 import { getArmorClass, getCharacterLevel, uid } from "@/lib/rules";
 import { normalizeCharacter } from "@/lib/storage";
@@ -98,6 +99,7 @@ function Index() {
           </div>
         ))}
       </div>
+      <SharedHome />
     </main>
   );
 }
