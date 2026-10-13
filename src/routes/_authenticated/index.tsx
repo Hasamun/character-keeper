@@ -12,7 +12,7 @@ import { useCharacters } from "@/lib/characters-store";
 import { getArmorClass, getCharacterLevel, uid } from "@/lib/rules";
 import { normalizeCharacter } from "@/lib/storage";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Летопись героев — трекер персонажей" },

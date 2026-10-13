@@ -24,7 +24,7 @@ import { exportCharacter } from "@/lib/storage";
 import { STAT_META, fmtDate } from "@/lib/stat-meta";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/character/$id/")({
+export const Route = createFileRoute("/_authenticated/character/$id/")({
   head: () => ({
     meta: [
       { title: "Персонаж — Летопись героев" },
