@@ -7,11 +7,11 @@ export const CSV_FIELDS = ['id','name','category','slot','quantity','description
 const LABELS = ['Идентификатор','Название','Категория','Слот','Количество','Описание','Ранг','Подтип','Ёмкость пояса','Вес','Цена','Оружие JSON','Броня JSON','Эффекты JSON','Требования JSON','Автор','Источник','Заметки','История JSON','Создан','Изображение','Миниатюра','Легенда'];
 const complex = new Set(['weapon','armor','effects','requirements','history']);
 const numeric = new Set(['quantity','beltCapacity','weight','price']);
-export function itemsCsv(items:Item[]) { return '\uFEFF'+Papa.unparse({fields:LABELS,data:items.map(i=>CSV_FIELDS.map(k=>{const v=(i as unknown as Record<string,unknown>)[k];return v==null?'':complex.has(k)?JSON.stringify(v):v;}))},{escapeFormulae:true}); }
+export function itemsCsv(items:Item[]) { return '\uFEFF'+Papa.unparse({fields:LABELS,data:items.map(i=>CSV_FIELDS.map(k=>{if(k==='image'||k==='thumb')return '';const v=(i as unknown as Record<string,unknown>)[k];return v==null?'':complex.has(k)?JSON.stringify(v):typeof v==='string'&&(/^['=+\-@\t\r]/.test(v)||v.startsWith('text-json:'))?'text-json:'+JSON.stringify(v):v;}))},{escapeFormulae:true}); }
 export function parseCsv(text:string):unknown[] {
  const p=Papa.parse<Record<string,string>>(text.replace(/^\uFEFF/,''),{header:true,skipEmptyLines:'greedy'});if(p.errors.length)throw new Error('Ошибка CSV: '+p.errors[0]?.message);
  const fields=p.meta.fields??[];if(fields.some(f=>!LABELS.includes(f)&&!CSV_FIELDS.includes(f)))throw new Error('Неизвестные заголовки CSV');
- return p.data.map(row=>Object.fromEntries(Object.entries(row).filter(([,v])=>v!=='').map(([label,v])=>{const k=CSV_FIELDS[LABELS.indexOf(label)]??label;return [k,complex.has(k)?JSON.parse(v):numeric.has(k)?Number(v):v];})));
+ return p.data.map(row=>Object.fromEntries(Object.entries(row).filter(([,v])=>v!=='').map(([label,v])=>{const k=CSV_FIELDS[LABELS.indexOf(label)]??label;return [k,complex.has(k)?JSON.parse(v):numeric.has(k)?Number(v):v.startsWith('text-json:')?JSON.parse(v.slice(10)):v];})));
 }
 function unpack(bytes:Uint8Array):Promise<Record<string,Uint8Array>> {
  let total=0,count=0;return new Promise((resolve,reject)=>unzip(bytes,{filter:entry=>{
@@ -23,7 +23,7 @@ function unpack(bytes:Uint8Array):Promise<Record<string,Uint8Array>> {
 export async function parseTransferFiles(files:File[]):Promise<ParsedTransfer> {
  const out:ParsedTransfer={records:[],errors:[],assets:new Map()};let bytes=0;
  for(const file of files){try{
- bytes+=file.size;if(file.size>TRANSFER_LIMITS.file||bytes>TRANSFER_LIMITS.expanded)throw new Error('Превышен допустимый размер файлов');
+ bytes+=file.size;if(file.size>(file.name.toLowerCase().endsWith('.zip')?TRANSFER_LIMITS.expanded:TRANSFER_LIMITS.file)||bytes>TRANSFER_LIMITS.expanded)throw new Error('Превышен допустимый размер файлов');
  const ext=file.name.split('.').pop()?.toLowerCase();let raw:unknown;
  if(ext==='zip'){
  const entries=await unpack(new Uint8Array(await file.arrayBuffer()));const manifest=entries['manifest.json'];if(!manifest)throw new Error('В архиве отсутствует manifest.json');
@@ -36,7 +36,7 @@ export async function parseTransferFiles(files:File[]):Promise<ParsedTransfer> {
  else if(ext==='json')raw=JSON.parse(await file.text());
  else if(['png','jpg','jpeg','webp'].includes(ext??'')){out.assets.set(file.name,file);continue;}
  else throw new Error('Поддерживаются JSON, CSV, ZIP, PNG, JPEG и WebP');
- const rows=Array.isArray(raw)?raw:raw&&typeof raw==='object'&&'records' in raw?(raw as {records:unknown[]}).records:[raw];
+ const rows=Array.isArray(raw)?raw:raw&&typeof raw==='object'&&'records' in raw?(raw as {records:unknown[]}).records:raw&&typeof raw==='object'&&'characters' in raw?(raw as {characters:unknown[]}).characters:raw&&typeof raw==='object'&&'items' in raw?(raw as {items:unknown[]}).items:[raw];
  if(!Array.isArray(rows)||rows.length+out.records.length>TRANSFER_LIMITS.records)throw new Error('Не более 500 записей за одну операцию');
  rows.forEach((r,idx)=>{try{out.records.push(validateRecord(r));}catch(e){out.errors.push(`${file.name}, запись ${idx+1}: ${friendlyError(e)}`);}});
  }catch(e){out.errors.push(`${file.name}: ${friendlyError(e)}`);}}
