@@ -33,6 +33,8 @@ export const Route = createFileRoute("/_authenticated/character/$id/")({
       { property: "og:description", content: "Лист персонажа домашней RPG-системы." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { tab?: Tab } =>
+    typeof s['tab'] === "string" && ["main", "stats", "skills", "inventory", "history"].includes(s['tab']) ? { tab: s['tab'] as Tab } : {},
   component: CharacterPage,
 });
 
@@ -49,7 +51,7 @@ function CharacterPage() {
   const { id } = Route.useParams();
   const { ready, get, upsert, remove } = useCharacters();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("main");
+  const [tab, setTab] = useState<Tab>(Route.useSearch().tab ?? "main");
   const [target, setTarget] = useState<{ type: "primary" | "secondary"; name: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 

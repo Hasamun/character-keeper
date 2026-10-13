@@ -154,3 +154,29 @@
 }
 @utility bg-gold { background: var(--gradient-gold); }
 @utility shadow-glow { box-shadow: var(--shadow-glow); }
+
+/* Item rank frames (F grey … S fiery gold) */
+:root {
+  --rank-f: oklch(0.6 0.01 260);
+  --rank-e: oklch(0.7 0.13 150);
+  --rank-d: oklch(0.68 0.13 230);
+  --rank-c: oklch(0.65 0.18 295);
+  --rank-b: oklch(0.7 0.17 340);
+  --rank-a: oklch(0.72 0.17 45);
+  --rank-s: oklch(0.82 0.16 80);
+}
+@utility rank-frame {
+  --rank: var(--rank-f);
+  border: 1px solid color-mix(in oklch, var(--rank) 70%, transparent);
+  background: linear-gradient(160deg, color-mix(in oklch, var(--rank) 18%, var(--card)), var(--card) 60%);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--rank) 15%, transparent) inset;
+}
+@utility rank-text { color: var(--rank); }
+@utility rank-badge { background: var(--rank); color: var(--background); }
+.rank-F { --rank: var(--rank-f); }
+.rank-E { --rank: var(--rank-e); }
+.rank-D { --rank: var(--rank-d); }
+.rank-C { --rank: var(--rank-c); }
+.rank-B { --rank: var(--rank-b); }
+.rank-A { --rank: var(--rank-a); }
+.rank-S { --rank: var(--rank-s); box-shadow: 0 0 18px -4px color-mix(in oklch, var(--rank-s) 60%, transparent); }

@@ -49,3 +49,46 @@ describe("inventory", () => {
     expect(inv.equipped.helmet).toBeNull();
   });
 });
+
+import { addItem, autoEquip, duplicateItem, normalizeInventory } from "./inventory";
+import { equipmentWarnings } from "./items";
+import { newCharacter } from "./index";
+
+describe("extended items", () => {
+  it("keeps old items valid and adds cloak slot", () => {
+    const inv = normalizeInventory({ items: [{ id: "a", name: "Old", category: "gear", slot: "helmet", quantity: 1 }], equipped: { helmet: "a" } });
+    expect(inv.items[0]!.name).toBe("Old");
+    expect(inv.equipped.helmet).toBe("a");
+    expect(inv.equipped.cloak).toBeNull();
+  });
+  it("merges identical consumables, not different ones or gear", () => {
+    let inv = emptyInventory();
+    inv = addItem(inv, item({ id: "p1", name: "Зелье", category: "consumable", quantity: 2 })).inventory;
+    inv = addItem(inv, item({ id: "p2", name: "Зелье", category: "consumable", quantity: 3 })).inventory;
+    expect(inv.items).toHaveLength(1);
+    expect(inv.items[0]!.quantity).toBe(5);
+    inv = addItem(inv, item({ id: "p3", name: "Зелье", category: "consumable", rank: "S" })).inventory;
+    expect(inv.items).toHaveLength(2);
+    inv = addItem(inv, item({ id: "s1", name: "Меч", category: "gear", slot: "weapon" })).inventory;
+    inv = addItem(inv, item({ id: "s2", name: "Меч", category: "gear", slot: "weapon" })).inventory;
+    expect(inv.items.filter((i) => i.name === "Меч")).toHaveLength(2);
+  });
+  it("duplicate is an independent instance", () => {
+    const inv = duplicateItem(base(), "sword", "sword2");
+    expect(inv.items.find((i) => i.id === "sword2")).toBeTruthy();
+    expect(inv.items.find((i) => i.id === "sword")!.name).toBe("sword");
+  });
+  it("warns but allows two-handed with shield and unmet requirements", () => {
+    let inv = upsertItem(base(), item({ id: "gs", name: "gs", category: "gear", slot: "weapon", weapon: { damage: "2d6", attackBonus: 0, damageType: "", attackMode: "str", twoHanded: true }, requirements: [{ stat: "Сила", min: 3 }] }));
+    inv = autoEquip(inv, "gs").inventory;
+    inv = autoEquip(inv, "shield").inventory;
+    expect(inv.weaponSets[0]).toEqual({ main: "gs", off: "shield" });
+    const w = equipmentWarnings(newCharacter(), inv).map((x) => x.kind);
+    expect(w).toContain("two_handed");
+    expect(w).toContain("requirement");
+  });
+  it("deleting an equipped item clears its slot", () => {
+    const inv = removeItem(autoEquip(base(), "helm").inventory, "helm");
+    expect(inv.equipped.helmet).toBeNull();
+  });
+});

@@ -16,6 +16,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedNewRouteImport } from './routes/_authenticated/new'
 import { Route as AuthenticatedCharacterIdIndexRouteImport } from './routes/_authenticated/character.$id.index'
 import { Route as AuthenticatedCharacterIdEditRouteImport } from './routes/_authenticated/character.$id.edit'
+import { Route as AuthenticatedCharacterIdItemItemIdRouteImport } from './routes/_authenticated/character.$id.item.$itemId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -53,6 +54,12 @@ const AuthenticatedCharacterIdEditRoute =
     path: '/character/$id/edit',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCharacterIdItemItemIdRoute =
+  AuthenticatedCharacterIdItemItemIdRouteImport.update({
+    id: '/character/$id/item/$itemId',
+    path: '/character/$id/item/$itemId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/new': typeof AuthenticatedNewRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
+  '/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -69,6 +77,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id': typeof AuthenticatedCharacterIdIndexRoute
+  '/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,6 +88,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/_authenticated/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
+  '/_authenticated/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/new'
     | '/character/$id/edit'
     | '/character/$id/'
+    | '/character/$id/item/$itemId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/'
     | '/character/$id/edit'
     | '/character/$id'
+    | '/character/$id/item/$itemId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -106,6 +118,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/character/$id/edit'
     | '/_authenticated/character/$id/'
+    | '/_authenticated/character/$id/item/$itemId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCharacterIdEditRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/character/$id/item/$itemId': {
+      id: '/_authenticated/character/$id/item/$itemId'
+      path: '/character/$id/item/$itemId'
+      fullPath: '/character/$id/item/$itemId'
+      preLoaderRoute: typeof AuthenticatedCharacterIdItemItemIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -173,6 +193,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
   AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
+  AuthenticatedCharacterIdItemItemIdRoute: typeof AuthenticatedCharacterIdItemItemIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -180,6 +201,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCharacterIdEditRoute: AuthenticatedCharacterIdEditRoute,
   AuthenticatedCharacterIdIndexRoute: AuthenticatedCharacterIdIndexRoute,
+  AuthenticatedCharacterIdItemItemIdRoute:
+    AuthenticatedCharacterIdItemItemIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
