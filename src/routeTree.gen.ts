@@ -9,37 +9,42 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedNewRouteImport } from './routes/_authenticated/new'
 import { Route as AuthenticatedCharacterIdIndexRouteImport } from './routes/_authenticated/character.$id.index'
 import { Route as AuthenticatedCharacterIdEditRouteImport } from './routes/_authenticated/character.$id.edit'
 
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
-  id: '/_authenticated/',
-  path: '/',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNewRoute = AuthenticatedNewRouteImport.update({
-  id: '/_authenticated/new',
+  id: '/new',
   path: '/new',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCharacterIdIndexRoute =
   AuthenticatedCharacterIdIndexRouteImport.update({
-    id: '/_authenticated/character/$id/',
+    id: '/character/$id/',
     path: '/character/$id/',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCharacterIdEditRoute =
   AuthenticatedCharacterIdEditRouteImport.update({
-    id: '/_authenticated/character/$id/edit',
+    id: '/character/$id/edit',
     path: '/character/$id/edit',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/new': typeof AuthenticatedNewRoute
   '/': typeof AuthenticatedIndexRoute
+  '/new': typeof AuthenticatedNewRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
 }
@@ -51,6 +56,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/new': typeof AuthenticatedNewRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
@@ -58,11 +64,12 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/new' | '/' | '/character/$id/edit' | '/character/$id/'
+  fullPaths: '/' | '/new' | '/character/$id/edit' | '/character/$id/'
   fileRoutesByTo: FileRoutesByTo
   to: '/new' | '/' | '/character/$id/edit' | '/character/$id'
   id:
     | '__root__'
+    | '/_authenticated'
     | '/_authenticated/new'
     | '/_authenticated/'
     | '/_authenticated/character/$id/edit'
@@ -70,50 +77,68 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthenticatedNewRoute: typeof AuthenticatedNewRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
-  AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/': {
       id: '/_authenticated/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/new': {
       id: '/_authenticated/new'
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof AuthenticatedNewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/character/$id/': {
       id: '/_authenticated/character/$id/'
       path: '/character/$id'
       fullPath: '/character/$id/'
       preLoaderRoute: typeof AuthenticatedCharacterIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/character/$id/edit': {
       id: '/_authenticated/character/$id/edit'
       path: '/character/$id/edit'
       fullPath: '/character/$id/edit'
       preLoaderRoute: typeof AuthenticatedCharacterIdEditRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedNewRoute: typeof AuthenticatedNewRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
+  AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNewRoute: AuthenticatedNewRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCharacterIdEditRoute: AuthenticatedCharacterIdEditRoute,
   AuthenticatedCharacterIdIndexRoute: AuthenticatedCharacterIdIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
