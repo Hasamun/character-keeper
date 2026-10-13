@@ -64,8 +64,9 @@ export function loadAll(): Character[] {
   }
 }
 
-export function saveAll(list: Character[]) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+/** Local browser storage is only a one-time migration source now. */
+export function clearLocal() {
+  localStorage.removeItem(KEY);
 }
 
 export function exportCharacter(c: Character) {
