@@ -17,7 +17,7 @@ export async function portableArchive(records:(Character|Item)[],progress:(s:str
 }
 export async function prepareImportedImages(items:Item[],assets:Map<string,File>,omit:boolean,uploaded:string[]) {
  const owner=await userId();
- for(const i of items){const original=i.image??i.thumb;const oldThumb=i.thumb;
+ for(const i of items){const original=i.image??i.thumb;
  if(!original)continue;if(omit){delete i.image;delete i.thumb;continue;}
  let file:File;
  if(original.startsWith('asset:')){const f=assets.get(original.slice(6));if(!f)throw new Error('Изображение отсутствует в архиве');file=f;}
@@ -25,7 +25,6 @@ export async function prepareImportedImages(items:Item[],assets:Map<string,File>
  await checkedImage(file);
  const uploadedImage=await uploadItemImage(i.id,file);uploaded.push(uploadedImage.image,uploadedImage.thumb);i.image=uploadedImage.image;i.thumb=uploadedImage.thumb;
  // The thumbnail is regenerated from the original and never imports an unchecked foreign path.
- if(!oldThumb&& !i.image)delete i.thumb;
  }
 }
 export async function cleanupImportedImages(paths:string[]){if(paths.length)await supabase.storage.from('item-images').remove(paths);}
@@ -34,7 +33,7 @@ export async function avatarImage(file:File){await checkedImage(file);const {res
 export async function cardPng(value:Character|Item):Promise<Blob>{
  const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=1320;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Не удалось создать карточку');
  const css=getComputedStyle(document.documentElement);const color=(token:string)=>css.getPropertyValue(token).trim();
- ctx.fillStyle=color('--background');ctx.fillRect(0,0,1000,1320);ctx.fillStyle=color('--gold');ctx.font='bold 46px Georgia';
+ ctx.fillStyle=color('--background');ctx.fillRect(0,0,1000,1320);ctx.fillStyle=color('--primary');ctx.font='bold 46px Georgia';
  const wrap=(s:string,x:number,y:number,width:number,line=42)=>{let row='';for(const word of s.split(/\s+/)){if(ctx.measureText(row+word).width>width&&row){ctx.fillText(row,x,y);y+=line;row='';}let w=word;while(ctx.measureText(w).width>width){let cut=w.length-1;while(cut>1&&ctx.measureText(w.slice(0,cut)).width>width)cut--;ctx.fillText(row+w.slice(0,cut),x,y);y+=line;row='';w=w.slice(cut);}row+=w+' ';}ctx.fillText(row,x,y);return y+line;};
  let y=wrap(value.name,60,85,880,54);ctx.font='24px Georgia';ctx.fillStyle=color('--muted-foreground');y=wrap('inventory' in value?`${value.race} · ${value.characterClass}`:`Ранг ${value.rank??'F'} · ${value.subtype??value.category}`,60,y+10,880,34);
  const path='inventory' in value?value.avatar:value.image;let blobUrl:string|undefined;
