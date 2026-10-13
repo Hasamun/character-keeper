@@ -121,7 +121,7 @@ function Form({ initial, onSave }: { initial: Item; onSave: (i: Item) => void })
           <fieldset className="grid gap-3 rounded-lg border border-border p-3">
             <legend className="px-1 text-xs uppercase tracking-wider text-muted-foreground">Оружие</legend>
             {(() => {
-              const w = i.weapon ?? { damage: "", attackBonus: 0, damageType: "", attackMode: "fixed" as AttackMode, twoHanded: false };
+              const w = i.weapon ?? { damage: "", attackBonus: 0, damageType: DAMAGE_TYPES[0] as string, attackMode: "fixed" as AttackMode, twoHanded: false };
               const sw = (p: Partial<typeof w>) => set({ weapon: { ...w, ...p } });
               return (
                 <div className="grid grid-cols-2 gap-3">
