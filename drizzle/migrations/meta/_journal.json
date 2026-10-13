@@ -29,6 +29,13 @@
       "when": 1791918315710,
       "tag": "0003_catalog_moderation_and_access",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791918368993,
+      "tag": "0004_catalog_sort_and_image_validation",
+      "breakpoints": true
     }
   ]
 }

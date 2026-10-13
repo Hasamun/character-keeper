@@ -53,7 +53,9 @@ export type Database = {
           id: string
           name: string
           owner_id: string
+          price_value: number | null
           rank: string
+          rank_order: number | null
           slot: string
           subtype: string
           updated_at: string
@@ -66,7 +68,9 @@ export type Database = {
           id?: string
           name: string
           owner_id: string
+          price_value?: number | null
           rank?: string
+          rank_order?: number | null
           slot?: string
           subtype?: string
           updated_at?: string
@@ -79,7 +83,9 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string
+          price_value?: number | null
           rank?: string
+          rank_order?: number | null
           slot?: string
           subtype?: string
           updated_at?: string
