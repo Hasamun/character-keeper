@@ -8,7 +8,7 @@
 ## Subsequent approved stages (not part of Step 3)
 - [x] Step 4: shared catalog (search, filters, sort, paging, lazy images, image storage + thumbnails), moderation workflow, admin area, logs
 - [x] Step 5: sharing characters with per-section rights, invites by account and one-use seven-day link, owner-only management, filtered reads, atomic writes, shared private images
-- [ ] Step 6: import/export (JSON, CSV, images, ZIP) with preview and duplicate handling, manual backup, final polish and checks
+- [x] Step 6: import/export (JSON, CSV, images, ZIP) with preview and duplicate handling, manual backup, final polish and checks
   - [x] Implement transfer validation, files, images, and protected save
   - [x] Add transfer UI and exports
   - [ ] Verify round trips, access boundaries, failure cleanup, and downloads
@@ -24,4 +24,4 @@ Verified Step 5: 67 tests; two-session invitation acceptance, hidden sections, s
 
 Проверено: 91 тест; импорт временного героя и изображения, ZIP с двумя файлами изображений, восстановление копии, сохранение опыта/заметок/зарядов/экипировки, скачивание JSON/CSV/PNG, повторный импорт с пропуском, мобильный экран без горизонтальной прокрутки, отсутствие ошибок страницы. Временные герои и изображения удалены.
 
-Остаются отдельные проверки шага 6: конфликт версии и частичный сбой в массовом импорте, очистка после ошибки записи/загрузки, запрет импорта чужого героя, массовая отправка предложений каталога, мобильная системная передача файлов. Не считать эти сценарии проверенными.
+Проверки шага 6 пройдены: устаревшая запись отклоняется после правки в другой вкладке; массовый импорт сохраняет удачные записи, показывает ошибку по каждой и не повторяет сохранённые; удаление загруженных картинок работает; запись чужого героя, загрузка в чужую папку и прямая публикация в каталог отклоняются; набор уходит в каталог только как предложение на модерацию; скачивание на узком экране работает. Системное окно «Поделиться» проверено только по коду (в тестовом браузере его нет).
