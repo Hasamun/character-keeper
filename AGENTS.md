@@ -19,3 +19,7 @@
 
 - Derived combat values and comparison use `deriveCharacter` in `src/lib/rules/derived.ts`, never mutate base stats/experience — one calculation keeps equipment and previews consistent.
 - Item use operations live in the same pure rules module; optional active effects and remaining charges persist in character JSON through the existing provider, which reconciles unequipped effects — avoids a second storage system.
+
+- Catalog templates and submissions live separately from personal inventory; protected server functions authorize through account_active and has_role, moderation and audit are committed by database functions — prevents client-side privilege and status changes.
+- Catalog image paths use the catalog: prefix for the private catalog-images bucket; personal copies get their own files and are persisted server-side with optimistic concurrency and failed-copy cleanup — preserves ownership and avoids orphaned copies on save failure.
+- CharactersProvider polls account access and hides protected content on blocking; restrictive database/storage policies remain the authority — already open sessions cannot bypass blocking.
