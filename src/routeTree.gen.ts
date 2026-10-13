@@ -14,6 +14,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedNewRouteImport } from './routes/_authenticated/new'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminAccountsRouteImport } from './routes/_authenticated/admin.accounts'
+import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedCatalogIndexRouteImport } from './routes/_authenticated/catalog.index'
 import { Route as AuthenticatedCatalogCatalogIdRouteImport } from './routes/_authenticated/catalog.$catalogId'
 import { Route as AuthenticatedCatalogProposalsRouteImport } from './routes/_authenticated/catalog.proposals'
@@ -43,6 +46,22 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedNewRoute = AuthenticatedNewRouteImport.update({
   id: '/new',
   path: '/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminAccountsRoute =
+  AuthenticatedAdminAccountsRouteImport.update({
+    id: '/admin/accounts',
+    path: '/admin/accounts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
+  id: '/admin/logs',
+  path: '/admin/logs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCatalogIndexRoute =
@@ -87,8 +106,11 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/new': typeof AuthenticatedNewRoute
+  '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
   '/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/catalog/': typeof AuthenticatedCatalogIndexRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
@@ -99,8 +121,11 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/new': typeof AuthenticatedNewRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
   '/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/catalog': typeof AuthenticatedCatalogIndexRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id': typeof AuthenticatedCharacterIdIndexRoute
@@ -113,8 +138,11 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/new': typeof AuthenticatedNewRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/_authenticated/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
   '/_authenticated/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/catalog/': typeof AuthenticatedCatalogIndexRoute
   '/_authenticated/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/_authenticated/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
@@ -127,8 +155,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/new'
+    | '/admin/accounts'
+    | '/admin/logs'
     | '/catalog/$catalogId'
     | '/catalog/proposals'
+    | '/admin/'
     | '/catalog/'
     | '/character/$id/edit'
     | '/character/$id/'
@@ -139,8 +170,11 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/new'
     | '/'
+    | '/admin/accounts'
+    | '/admin/logs'
     | '/catalog/$catalogId'
     | '/catalog/proposals'
+    | '/admin'
     | '/catalog'
     | '/character/$id/edit'
     | '/character/$id'
@@ -152,8 +186,11 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/new'
     | '/_authenticated/'
+    | '/_authenticated/admin/accounts'
+    | '/_authenticated/admin/logs'
     | '/_authenticated/catalog/$catalogId'
     | '/_authenticated/catalog/proposals'
+    | '/_authenticated/admin/'
     | '/_authenticated/catalog/'
     | '/_authenticated/character/$id/edit'
     | '/_authenticated/character/$id/'
@@ -201,6 +238,27 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof AuthenticatedNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/accounts': {
+      id: '/_authenticated/admin/accounts'
+      path: '/admin/accounts'
+      fullPath: '/admin/accounts'
+      preLoaderRoute: typeof AuthenticatedAdminAccountsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/logs': {
+      id: '/_authenticated/admin/logs'
+      path: '/admin/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AuthenticatedAdminLogsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/catalog/': {
@@ -251,8 +309,11 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedNewRoute: typeof AuthenticatedNewRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
+  AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
   AuthenticatedCatalogCatalogIdRoute: typeof AuthenticatedCatalogCatalogIdRoute
   AuthenticatedCatalogProposalsRoute: typeof AuthenticatedCatalogProposalsRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedCatalogIndexRoute: typeof AuthenticatedCatalogIndexRoute
   AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
   AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
@@ -262,8 +323,11 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNewRoute: AuthenticatedNewRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminAccountsRoute: AuthenticatedAdminAccountsRoute,
+  AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
   AuthenticatedCatalogCatalogIdRoute: AuthenticatedCatalogCatalogIdRoute,
   AuthenticatedCatalogProposalsRoute: AuthenticatedCatalogProposalsRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedCatalogIndexRoute: AuthenticatedCatalogIndexRoute,
   AuthenticatedCharacterIdEditRoute: AuthenticatedCharacterIdEditRoute,
   AuthenticatedCharacterIdIndexRoute: AuthenticatedCharacterIdIndexRoute,
