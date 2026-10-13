@@ -20,7 +20,9 @@ import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCatalogIndexRouteImport } from './routes/_authenticated/catalog.index'
 import { Route as AuthenticatedCatalogCatalogIdRouteImport } from './routes/_authenticated/catalog.$catalogId'
 import { Route as AuthenticatedCatalogProposalsRouteImport } from './routes/_authenticated/catalog.proposals'
+import { Route as AuthenticatedInviteTokenRouteImport } from './routes/_authenticated/invite.$token'
 import { Route as AuthenticatedCharacterIdIndexRouteImport } from './routes/_authenticated/character.$id.index'
+import { Route as AuthenticatedCharacterIdAccessRouteImport } from './routes/_authenticated/character.$id.access'
 import { Route as AuthenticatedCharacterIdEditRouteImport } from './routes/_authenticated/character.$id.edit'
 import { Route as AuthenticatedCharacterIdItemItemIdRouteImport } from './routes/_authenticated/character.$id.item.$itemId'
 
@@ -82,10 +84,22 @@ const AuthenticatedCatalogProposalsRoute =
     path: '/catalog/proposals',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedInviteTokenRoute =
+  AuthenticatedInviteTokenRouteImport.update({
+    id: '/invite/$token',
+    path: '/invite/$token',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCharacterIdIndexRoute =
   AuthenticatedCharacterIdIndexRouteImport.update({
     id: '/character/$id/',
     path: '/character/$id/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCharacterIdAccessRoute =
+  AuthenticatedCharacterIdAccessRouteImport.update({
+    id: '/character/$id/access',
+    path: '/character/$id/access',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCharacterIdEditRoute =
@@ -110,8 +124,10 @@ export interface FileRoutesByFullPath {
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
   '/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/invite/$token': typeof AuthenticatedInviteTokenRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/catalog/': typeof AuthenticatedCatalogIndexRoute
+  '/character/$id/access': typeof AuthenticatedCharacterIdAccessRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
   '/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -125,8 +141,10 @@ export interface FileRoutesByTo {
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
   '/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/invite/$token': typeof AuthenticatedInviteTokenRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/catalog': typeof AuthenticatedCatalogIndexRoute
+  '/character/$id/access': typeof AuthenticatedCharacterIdAccessRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id': typeof AuthenticatedCharacterIdIndexRoute
   '/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -142,8 +160,10 @@ export interface FileRoutesById {
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/_authenticated/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
   '/_authenticated/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/_authenticated/invite/$token': typeof AuthenticatedInviteTokenRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/catalog/': typeof AuthenticatedCatalogIndexRoute
+  '/_authenticated/character/$id/access': typeof AuthenticatedCharacterIdAccessRoute
   '/_authenticated/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/_authenticated/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
   '/_authenticated/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -159,8 +179,10 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/catalog/$catalogId'
     | '/catalog/proposals'
+    | '/invite/$token'
     | '/admin/'
     | '/catalog/'
+    | '/character/$id/access'
     | '/character/$id/edit'
     | '/character/$id/'
     | '/character/$id/item/$itemId'
@@ -174,8 +196,10 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/catalog/$catalogId'
     | '/catalog/proposals'
+    | '/invite/$token'
     | '/admin'
     | '/catalog'
+    | '/character/$id/access'
     | '/character/$id/edit'
     | '/character/$id'
     | '/character/$id/item/$itemId'
@@ -190,8 +214,10 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/logs'
     | '/_authenticated/catalog/$catalogId'
     | '/_authenticated/catalog/proposals'
+    | '/_authenticated/invite/$token'
     | '/_authenticated/admin/'
     | '/_authenticated/catalog/'
+    | '/_authenticated/character/$id/access'
     | '/_authenticated/character/$id/edit'
     | '/_authenticated/character/$id/'
     | '/_authenticated/character/$id/item/$itemId'
@@ -282,11 +308,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCatalogProposalsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/invite/$token': {
+      id: '/_authenticated/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof AuthenticatedInviteTokenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/character/$id/': {
       id: '/_authenticated/character/$id/'
       path: '/character/$id'
       fullPath: '/character/$id/'
       preLoaderRoute: typeof AuthenticatedCharacterIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/character/$id/access': {
+      id: '/_authenticated/character/$id/access'
+      path: '/character/$id/access'
+      fullPath: '/character/$id/access'
+      preLoaderRoute: typeof AuthenticatedCharacterIdAccessRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/character/$id/edit': {
@@ -313,8 +353,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
   AuthenticatedCatalogCatalogIdRoute: typeof AuthenticatedCatalogCatalogIdRoute
   AuthenticatedCatalogProposalsRoute: typeof AuthenticatedCatalogProposalsRoute
+  AuthenticatedInviteTokenRoute: typeof AuthenticatedInviteTokenRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedCatalogIndexRoute: typeof AuthenticatedCatalogIndexRoute
+  AuthenticatedCharacterIdAccessRoute: typeof AuthenticatedCharacterIdAccessRoute
   AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
   AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
   AuthenticatedCharacterIdItemItemIdRoute: typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -327,8 +369,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
   AuthenticatedCatalogCatalogIdRoute: AuthenticatedCatalogCatalogIdRoute,
   AuthenticatedCatalogProposalsRoute: AuthenticatedCatalogProposalsRoute,
+  AuthenticatedInviteTokenRoute: AuthenticatedInviteTokenRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedCatalogIndexRoute: AuthenticatedCatalogIndexRoute,
+  AuthenticatedCharacterIdAccessRoute: AuthenticatedCharacterIdAccessRoute,
   AuthenticatedCharacterIdEditRoute: AuthenticatedCharacterIdEditRoute,
   AuthenticatedCharacterIdIndexRoute: AuthenticatedCharacterIdIndexRoute,
   AuthenticatedCharacterIdItemItemIdRoute:
