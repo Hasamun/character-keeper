@@ -14,6 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          details: Json
+          id: string
+          reason: string
+          target_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          reason?: string
+          target_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          reason?: string
+          target_id?: string
+        }
+        Relationships: []
+      }
+      catalog_items: {
+        Row: {
+          archived: boolean
+          category: string
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          owner_id: string
+          rank: string
+          slot: string
+          subtype: string
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          category: string
+          created_at?: string
+          data: Json
+          id?: string
+          name: string
+          owner_id: string
+          rank?: string
+          slot?: string
+          subtype?: string
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          category?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          owner_id?: string
+          rank?: string
+          slot?: string
+          subtype?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_submissions: {
+        Row: {
+          catalog_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          owner_id: string
+          reason: string
+          revision: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          catalog_id?: string | null
+          created_at?: string
+          data: Json
+          id?: string
+          owner_id: string
+          reason?: string
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          owner_id?: string
+          reason?: string
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_submissions_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       characters: {
         Row: {
           created_at: string
@@ -85,12 +201,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      account_active: { Args: never; Returns: boolean }
+      archive_catalog: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      review_catalog: {
+        Args: {
+          _approve: boolean
+          _id: string
+          _reason?: string
+          _revision: number
+        }
+        Returns: string
+      }
+      set_account_block: {
+        Args: { _blocked: boolean; _id: string; _reason: string }
+        Returns: undefined
+      }
+      submit_catalog: {
+        Args: { _catalog_id?: string; _data: Json; _submission_id?: string }
+        Returns: string
       }
     }
     Enums: {
