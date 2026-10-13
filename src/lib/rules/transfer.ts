@@ -21,7 +21,7 @@ function images(items:Item[]) { for(const i of items)for(const p of [i.image,i.t
 function duplicates(ids:string[],label:string) { if(new Set(ids).size!==ids.length)throw new Error(`Повторяющийся идентификатор: ${label}`); }
 export function validateRecord(raw:unknown):TransferRecord {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Ожидается персонаж или предмет');
-  if('category' in raw){const r=itemSchema.parse(raw);const i=normalizeInventory({items:[r]}).items[0];if(!i)throw new Error('Некорректный предмет');images([i]);return {kind:'item',value:i,warnings:r.id?[]:['Будет назначен идентификатор']};}
+  if('category' in raw){const r=itemSchema.parse(raw);const i=normalizeInventory({items:[{...r,id:r.id??uid()}]}).items[0];if(!i)throw new Error('Некорректный предмет');images([i]);return {kind:'item',value:i,warnings:r.id?[]:['Будет назначен идентификатор']};}
   const r=characterSchema.parse(raw);const warnings:string[]=[];
   if(!r.primary||!r.secondary)warnings.push('Отсутствующие характеристики и навыки будут заполнены базовыми значениями');
   for(const n of Object.keys(r.primary??{}))if(!PRIMARY_STAT_NAMES.includes(n as typeof PRIMARY_STAT_NAMES[number]))throw new Error(`Неизвестная характеристика: ${n}`);
@@ -33,6 +33,7 @@ export function validateRecord(raw:unknown):TransferRecord {
   if(refs.some(id=>id&&!ids.includes(id)))throw new Error('Экипировка ссылается на отсутствующий предмет');
   if(Object.keys(r.inventory?.equipped??{}).some(k=>!SLOTS.some(s=>s.id===k)))throw new Error('Неизвестный слот экипировки');
   for(const a of r.activeEffects??[])if(a.equipmentBound&&(!ids.includes(a.sourceItemId)||!r.inventory?.items?.find(i=>i.id===a.sourceItemId)?.effects?.some(e=>e.id===a.effect.id)))throw new Error('Эффект снаряжения ссылается на отсутствующий предмет или эффект');
+  if(r.inventory?.items)r.inventory.items=r.inventory.items.map(i=>({...i,id:i.id??uid()}));
   const c=normalizeCharacter(r);images(c.inventory.items);
   if(JSON.stringify(c.inventory.belt)!==JSON.stringify(r.inventory?.belt??[]))throw new Error('Пояс не соответствует предмету или ёмкости');
   return {kind:'character',value:c,warnings};
