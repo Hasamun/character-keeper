@@ -1,14 +1,58 @@
-# Welcome to your Lovable project
+# Character Keeper
+
+Составь подробный план создания веб-приложения — трекера персонажей под домашнюю RPG-систему (не D&D 5e).
+
+Контекст:
+
+- Однопользовательский режим (без мастера и игроков)
+
+- Нужно полностью сохранить существующую игровую логику прокачки
+
+- Данные персонажей должны сохраняться и корректно загружаться после обновления страницы
+
+Ключевые требования к логике:
+
+1. 6 основных характеристик (Сила, Ловкость, Телосложение, Интеллект, Мудрость, Харизма) с уровнями от -6 до 10 и подуровнями 0–4
+
+2. Вторичные навыки, привязанные к основным (список скиллов как в исходной системе)
+
+3. Сложные таблицы стоимости опыта для основных и вторичных характеристик
+
+4. Автоматический бонус опыта в основную характеристику при повышении вторичного навыка
+
+5. Расчёт HP на основе расы + класса + Телосложения + Стойкости + Силы
+
+6. Класс брони = 10 + уровень Ловкости
+
+Что нужно в первой версии:
+
+- Список персонажей (создание, открытие, удаление)
+
+- Создание/редактирование персонажа (имя, раса, класс, аватар, распределение стартовых 1000 опыта)
+
+- Главный экран персонажа с карточками характеристик и возможностью добавлять/убирать опыт
+
+- Вкладка «История» (лог изменений)
+
+- Вкладка «Инвентарь» — пока только аккуратная заглушка
+
+- Возможность добавлять текстовые заметки к персонажу
+
+Дизайн: тёмная фэнтезийная тема с золотыми акцентами, удобно на мобильных.
+
+Сначала предложи структуру данных, основные экраны и порядок реализации. 
+
+Задай уточняющие вопросы, если что-то неясно.
 
 This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b74b653c-916b-4707-9369-198929d39069).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +64,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
