@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { catalogTemplate,catalogCopy,mayReview,mayBlock,catalogSearch } from './catalog';
 import { addItem,emptyInventory,type Item } from './inventory';
-const source:Item={id:'original',name:'Щит',category:'gear',slot:'offhand',quantity:3,description:'',rank:'S',notes:'private',history:[{at:'2026-01-01',text:'private'}],effects:[{id:'charge',kind:'ac',automation:'use',value:2,charges:5,remainingCharges:1}]};
+const source:Item={id:'original',name:'Щит',category:'gear',slot:'offhand',quantity:3,description:'',rank:'S',notes:'private',history:[{at:'2026-01-01',text:'private'}],effects:[{id:'charge',kind:'ac',automation:'confirm',target:'',value:2,charges:5,remainingCharges:1}]};
 describe('catalog copies',()=>{
  it('excludes private notes and history from a proposal',()=>{const t=catalogTemplate(source);expect(t).not.toHaveProperty('notes');expect(t).not.toHaveProperty('history');expect(source.notes).toBe('private');});
  it('removes remaining charges from a template',()=>{expect(catalogTemplate(source).effects?.[0]).not.toHaveProperty('remainingCharges');expect(source.effects?.[0]?.remainingCharges).toBe(1);});
