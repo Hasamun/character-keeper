@@ -1,0 +1,19 @@
+import { Link, useRouter } from '@tanstack/react-router';
+import { Button } from '@/components/ui/button';
+import { itemTypeLabel } from './ItemCard';
+import { useItemImage } from '@/lib/item-images';
+import { effectLabel, ATTACK_MODE_LABELS } from '@/lib/rules/items';
+import type { Item } from '@/lib/rules/inventory';
+import { fmtDate } from '@/lib/stat-meta';
+export function CatalogNav(){return <nav className="mb-6 flex flex-wrap gap-2 text-sm"><Button asChild variant="ghost"><Link to="/">Герои</Link></Button><Button asChild variant="outline"><Link to="/catalog">Каталог</Link></Button><Button asChild variant="outline"><Link to="/catalog/proposals">Мои предложения</Link></Button></nav>;}
+export function AdminNav(){return <nav className="mb-5 flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/admin">Модерация</Link></Button><Button asChild variant="outline"><Link to="/admin/accounts">Аккаунты</Link></Button><Button asChild variant="outline"><Link to="/admin/logs">Журнал</Link></Button><Button asChild variant="ghost"><Link to="/catalog">Каталог</Link></Button></nav>;}
+export function PageControls({page,count,onPage}:{page:number;count:number;onPage:(p:number)=>void}){return <div className="mt-5 flex items-center justify-between gap-2"><Button variant="outline" disabled={page<=1} onClick={()=>onPage(page-1)}>Назад</Button><span className="text-sm text-muted-foreground">{page} / {Math.max(1,Math.ceil(count/24))} · {count}</span><Button variant="outline" disabled={page*24>=count} onClick={()=>onPage(page+1)}>Далее</Button></div>;}
+export function CatalogError({error}:{error:Error}){const router=useRouter();return <div className="mx-auto max-w-lg p-8"><h1 className="mb-4 text-xl">Раздел недоступен</h1><p role="alert" className="mb-4 text-muted-foreground">{error.message}</p><Button onClick={()=>router.invalidate()}>Повторить</Button><Button asChild variant="ghost"><Link to="/">Герои</Link></Button></div>;}
+export function CatalogNotFound(){return <p className="p-8">Предмет не найден.</p>;}
+export function ItemDetails({item}:{item:Item}){
+ const image=useItemImage(item.image);const rows:[string,string][]=[['Тип',itemTypeLabel(item)],['Ранг',item.rank??'F'],['Цена',item.price==null?'—':`${item.price} зм`],['Вес',String(item.weight??'—')],['Автор',item.author??'—'],['Источник',item.source??'—']];
+ if(item.weapon)rows.push(['Урон',`${item.weapon.damage} ${item.weapon.damageType}`],['Бонус атаки',String(item.weapon.attackBonus)],['Атака зависит от',ATTACK_MODE_LABELS[item.weapon.attackMode]],['Хват',item.weapon.twoHanded?'Двуручное':'Одноручное']);
+ if(item.armor)rows.push(['Бонус КБ',String(item.armor.ac)],['Тип брони',item.armor.armorType||'—']);
+ return <section className="grid gap-4">{image&&<img src={image} alt={item.name} className="max-h-96 w-full rounded-lg object-contain"/>}<h2 className="text-2xl text-primary">{item.name}</h2><p className="whitespace-pre-wrap break-words text-sm">{item.description}</p>{item.lore&&<p className="whitespace-pre-wrap text-sm text-muted-foreground">{item.lore}</p>}<dl>{rows.map(([k,v])=><div key={k} className="flex justify-between gap-4 border-b border-border py-2 text-sm"><dt className="text-muted-foreground">{k}</dt><dd className="min-w-0 break-words text-right">{v}</dd></div>)}</dl><h3 className="font-semibold">Эффекты</h3>{item.effects?.map(e=><div key={e.id} className="border-b border-border py-2 text-sm"><b>{effectLabel(e)}</b><p className="text-muted-foreground">{[e.condition,e.duration,e.charges!=null?`Запас зарядов: ${e.charges}`:null,e.description].filter(Boolean).join(' · ')}</p></div>)}<h3 className="font-semibold">Требования</h3><p className="text-sm">{item.requirements?.map(r=>`${r.stat} ≥ ${r.min}`).join(', ')||'Нет требований'}</p></section>;
+}
+export const dateLabel=fmtDate;

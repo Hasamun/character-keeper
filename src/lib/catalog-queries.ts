@@ -1,0 +1,11 @@
+import { queryOptions } from '@tanstack/react-query';
+import { accountInfo, listCatalog, getCatalog, listSubmissions, adminAccounts, auditLogs } from './catalog.functions';
+import type { CatalogSearch } from './rules/catalog';
+export const accountQuery=()=>queryOptions({queryKey:['account-access'],queryFn:()=>accountInfo(),staleTime:0});
+export const catalogQuery=(s:CatalogSearch)=>queryOptions({queryKey:['catalog',s],queryFn:()=>listCatalog({data:s})});
+export const catalogItemQuery=(id:string)=>queryOptions({queryKey:['catalog-item',id],queryFn:()=>getCatalog({data:{id}})});
+export const submissionsQuery=(admin:boolean,page:number)=>queryOptions({queryKey:['submissions',admin,page],queryFn:()=>listSubmissions({data:{admin,page}})});
+export const accountsQuery=(q:string,page:number)=>queryOptions({queryKey:['admin-accounts',q,page],queryFn:()=>adminAccounts({data:{q,page}})});
+export const auditQuery=(page:number)=>queryOptions({queryKey:['audit',page],queryFn:()=>auditLogs({data:{page}})});
+export const pageSearch=(s:Record<string,unknown>)=>({page:Math.max(1,Math.trunc(Number(s.page))||1)});
+export const contentHead=(title:string,description:string)=>({meta:[{title:`${title} — Летопись героев`},{name:'description',content:description},{property:'og:title',content:`${title} — Летопись героев`},{property:'og:description',content:description},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]});
