@@ -36,19 +36,20 @@ export const Route = createFileRoute("/_authenticated/character/$id/")({
   component: CharacterPage,
 });
 
-type Tab = "stats" | "history" | "notes" | "inventory";
+type Tab = "main" | "stats" | "skills" | "inventory" | "history";
 const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
-  { id: "stats", label: "Характеристики", icon: Swords },
-  { id: "history", label: "История", icon: History },
-  { id: "notes", label: "Заметки", icon: NotebookPen },
+  { id: "main", label: "Главная", icon: Home },
+  { id: "stats", label: "Характ.", icon: Swords },
+  { id: "skills", label: "Навыки", icon: ScrollText },
   { id: "inventory", label: "Инвентарь", icon: Backpack },
+  { id: "history", label: "История", icon: History },
 ];
 
 function CharacterPage() {
   const { id } = Route.useParams();
   const { ready, get, upsert, remove } = useCharacters();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("stats");
+  const [tab, setTab] = useState<Tab>("main");
   const [target, setTarget] = useState<{ type: "primary" | "secondary"; name: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -87,7 +88,7 @@ function CharacterPage() {
         </div>
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur sm:static sm:mb-5 sm:flex sm:gap-2 sm:border-0 sm:bg-transparent">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-background/95 backdrop-blur sm:static sm:mb-5 sm:flex sm:gap-2 sm:border-0 sm:bg-transparent">
         {TABS.map((t) => (
           <button
             key={t.id}
