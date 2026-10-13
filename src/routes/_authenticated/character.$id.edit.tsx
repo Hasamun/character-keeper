@@ -5,6 +5,8 @@ import { useCharacters } from "@/lib/characters-store";
 export const Route = createFileRoute("/_authenticated/character/$id/edit")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Редактирование персонажа — Летопись героев" },
       { name: "description", content: "Измените имя, расу, класс и аватар персонажа." },
       { property: "og:title", content: "Редактирование персонажа — Летопись героев" },

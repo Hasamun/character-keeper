@@ -15,6 +15,8 @@ import { normalizeCharacter } from "@/lib/storage";
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Летопись героев — трекер персонажей" },
       { name: "description", content: "Список ваших персонажей: прокачка характеристик, навыки, HP и класс брони." },
       { property: "og:title", content: "Летопись героев — трекер персонажей" },

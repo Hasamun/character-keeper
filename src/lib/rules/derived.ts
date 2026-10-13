@@ -1,4 +1,4 @@
-import { getArmorClass, getHp, getHpBonus, PRIMARY_STAT_NAMES, SECONDARY_SKILLS, pushLog, uid, type Character } from './index';
+import { getArmorClass, getHp, PRIMARY_STAT_NAMES, SECONDARY_SKILLS, pushLog, uid, type Character } from './index';
 import { canEquipHand, canEquipSlot, equipHand, equipSlot, findItem, removeItem, SLOTS, type Item, type SlotId, type Hand } from './inventory';
 import { normalizeEffect, effectLabel, withHistory, type Effect } from './items';
 
