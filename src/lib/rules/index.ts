@@ -1,3 +1,4 @@
+import type { ActiveEffect } from "./derived";
 import { emptyInventory, type Inventory } from "./inventory";
 // Game rules ported 1:1 from the original app_2.py. Pure functions, no UI.
 
@@ -92,6 +93,7 @@ export interface Character {
   log: LogEntry[];
   notes: Note[];
   inventory: Inventory;
+  activeEffects?: ActiveEffect[];
   createdAt: string;
   updatedAt: string;
 }

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { reconcileEffects } from "./rules/derived";
 import type { Character } from "./rules";
 import { clearLocal, loadAll, normalizeCharacter } from "./storage";
 import {
@@ -70,7 +71,7 @@ export function CharactersProvider({ userId, children }: { userId: string; child
     characters,
     get: (id) => characters.find((c) => c.id === id),
     upsert: (c) => {
-      const u = { ...c, updatedAt: new Date().toISOString() };
+      const u = { ...reconcileEffects(c), updatedAt: new Date().toISOString() };
       setCharacters((l) => (l.some((x) => x.id === c.id) ? l.map((x) => (x.id === c.id ? u : x)) : [...l, u]));
       persist(u);
     },
