@@ -90,6 +90,8 @@ export const sharedAction = createServerFn({ method: 'POST' }).middleware([requi
   if (!row.data || row.error) throw new Error('Персонаж недоступен');
   if (row.data.updated_at !== data.version) throw new Error('Персонаж изменился. Обновите данные и повторите действие');
   let c = normalizeCharacter(row.data.data); let log = '';
+  const uploaded: string[] = [];
+  try {
   if (action === 'primaryExp' || action === 'secondaryExp') {
     const r = action === 'primaryExp' ? addPrimaryExp(c, data.name ?? '', data.amount ?? 0) : addSecondaryExp(c, data.name ?? '', data.amount ?? 0);
     if (r.error) throw new Error(r.error); c = r.character; log = `${data.name}: ${data.amount} опыта`;
@@ -104,7 +106,20 @@ export const sharedAction = createServerFn({ method: 'POST' }).middleware([requi
     const raw=z.object({name:z.string().min(1),category:z.enum(['gear','consumable','misc'])}).passthrough().parse(data.value);
     const normalized=normalizeCharacter({...c,inventory:{...c.inventory,items:[{...raw,id:action==='addItem'?uid():data.itemId} as unknown as Item]}}).inventory.items[0];
     if(!normalized)throw new Error('Некорректный предмет');
-    for(const path of [normalized.image,normalized.thumb])if(path && !path.startsWith(`${context.userId}/`) && !c.inventory.items.some(i=>i.image===path||i.thumb===path))throw new Error('Изображение недоступно');
+    for (const field of ['image', 'thumb'] as const) {
+      const path = normalized[field];
+      if (!path) continue;
+      const existing = c.inventory.items.some(i => i.image === path || i.thumb === path);
+      if (existing && path.startsWith(`${a.ownerId}/`)) continue;
+      if (!path.startsWith(`${context.userId}/`) || path.includes('..')) throw new Error('Изображение недоступно');
+      const download = await context.supabase.storage.from('item-images').download(path);
+      if (download.error || !download.data) throw new Error('Изображение недоступно');
+      if (context.userId === a.ownerId) continue;
+      const destination = `${a.ownerId}/${normalized.id}/${uid()}-${field}`;
+      const copy = await supabaseAdmin.storage.from('item-images').upload(destination, download.data, { contentType: download.data.type });
+      if (copy.error) throw new Error('Не удалось сохранить изображение');
+      uploaded.push(destination); normalized[field] = destination;
+    }
     if(action==='editItem'&&!c.inventory.items.some(i=>i.id===data.itemId))throw new Error('Предмет недоступен');
     c.inventory=action==='addItem'?addItem(c.inventory,normalized).inventory:upsertItem(c.inventory,normalized);log=action==='addItem'?'Добавлен предмет':'Изменён предмет';
   } else if(action==='removeItem'){c.inventory=removeItem(c.inventory,data.itemId ?? '');log='Удалён предмет';
@@ -119,11 +134,20 @@ export const sharedAction = createServerFn({ method: 'POST' }).middleware([requi
   const saved=await supabaseAdmin.rpc('commit_character_section',{_id:data.id,_actor:context.userId,_expected:data.version,_data:json(c),_sections:sections,_log:`${profile.data?.display_name || 'Участник'}: ${log}`});
   if(saved.error)throw new Error(saved.error.message.includes('CONFLICT')?'Персонаж изменился. Обновите данные и повторите действие':'Не удалось сохранить: доступ изменён');
   return {ok:true};
+  } catch (error) {
+    if (uploaded.length) await supabaseAdmin.storage.from('item-images').remove(uploaded);
+    throw error;
+  }
 });
 
 export const saveOwnedCharacter = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(v=>z.object({character:z.unknown(),version:z.string().nullable()}).parse(v)).handler(async({data,context})=>{
   const active=await context.supabase.rpc('account_active');if(active.error||!active.data)throw new Error('Доступ закрыт');
   const c=reconcileEffects(normalizeCharacter(data.character));c.updatedAt=new Date().toISOString();
+  for (const item of c.inventory.items) {
+    for (const path of [item.image, item.thumb]) {
+      if (path && (!path.startsWith(`${context.userId}/`) || path.includes('..'))) throw new Error('Изображение недоступно: используйте собственный файл');
+    }
+  }
   const row={id:c.id,owner_id:context.userId,name:c.name,data:json(c),updated_at:c.updatedAt};
   const r=data.version
     ? await context.supabase.from('characters').update({name:row.name,data:row.data,updated_at:row.updated_at}).eq('id',c.id).eq('owner_id',context.userId).eq('updated_at',data.version).select('data,updated_at').maybeSingle()
