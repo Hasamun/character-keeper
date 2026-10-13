@@ -4,7 +4,8 @@ import {parseCsv,itemsCsv,parseTransferFiles,makeArchive} from './transfer-files
 import {newCharacter} from './rules';
 import {TRANSFER_LIMITS} from './rules/transfer';
 import type {Item} from './rules/inventory';
-import {File} from 'node:buffer';
+import {File as NodeFile} from 'node:buffer';
+const File=NodeFile as unknown as typeof globalThis.File;
 describe('portable files',()=>{
  it('CSV preserves quotes, newlines, effects, requirements and formula-like text',()=>{const i:Item={id:'x',name:'=Название',category:'gear',quantity:1,description:'"Текст",\nстрока',notes:"'Заметка",effects:[{id:'e',kind:'ac',target:'',value:-2,automation:'manual',charges:5,remainingCharges:2}],requirements:[{stat:'Сила',min:3}]};const r=parseCsv(itemsCsv([i]));expect(r[0]).toEqual(i);});
  it('CSV omits nonportable image references',()=>expect(parseCsv(itemsCsv([{id:'x',name:'X',category:'misc',quantity:1,description:'',image:'foreign/x/a.png'}]))[0]).not.toHaveProperty('image'));
