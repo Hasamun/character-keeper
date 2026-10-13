@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface Store {
+  flush: () => Promise<void>;
   refresh: () => Promise<void>;
   ready: boolean;
   characters: Character[];
@@ -85,6 +86,7 @@ export function CharactersProvider({ userId, children }: { userId: string; child
   };
 
   const value: Store = {
+    flush: async () => { await Promise.all([...queue.current.values()]); },
     refresh: async () => {
       if (!allowed) return;
       const { data, error } = await supabase.from("characters").select("id,data,updated_at").order("created_at");

@@ -78,7 +78,7 @@ export function exportCharacter(c: Character) {
   a.href = URL.createObjectURL(blob);
   a.download = `${c.name.replace(/[<>:"/\\|?*]/g, "_") || "character"}.json`;
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
 }
 
 export function resizeImage(file: File, size = 256): Promise<string> {

@@ -22,7 +22,6 @@ import {
   PRIMARY_STAT_NAMES, SECONDARY_GROUPS, SKILL_TO_PRIMARY, addPrimaryExp, addSecondaryExp, getArmorClass,
   getCharacterLevel, getHp, primaryRequired, secondaryRequired, uid, type Character,
 } from "@/lib/rules";
-import { exportCharacter } from "@/lib/storage";
 import { STAT_META, fmtDate } from "@/lib/stat-meta";
 import { cn } from "@/lib/utils";
 
@@ -77,7 +76,7 @@ function CharacterPage() {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => navigate({to:'/character/$id/access',params:{id}})}><Users/> Доступ</DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate({ to: "/character/$id/edit", params: { id } })}><Pencil /> Редактировать</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportCharacter(c)}><Download /> Экспорт JSON</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({to:'/transfer',search:{character:id}})}><Download /> Экспорт и копия</DropdownMenuItem>
             <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDelete(true)}><Trash2 /> Удалить</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
