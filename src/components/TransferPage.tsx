@@ -30,7 +30,8 @@ export function TransferPage({initialId}:{initialId?:string|undefined}){
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);cancel.current=false;setOutput(null);try{await fn();}catch(e){toast.error(friendlyError(e));setProgress(friendlyError(e));}finally{setBusy(false);}};
  const readFiles=(list:File[])=>run(async()=>{setProgress('Чтение файлов');const worker=new Worker(new URL('../lib/transfer-worker.ts',import.meta.url),{type:'module'});const r=await new Promise<ParsedTransfer>((resolve,reject)=>{worker.onmessage=e=>{worker.terminate();if(e.data.error)reject(new Error(e.data.error));else resolve(e.data.result);};worker.onerror=()=>{worker.terminate();reject(new Error('Не удалось прочитать файлы'));};worker.postMessage(list);});setParsed(r);setRows(r.records.map(record=>({record,action:'copy',target:'',commitId:uid()})));setProgress(`Записей: ${r.records.length}; ошибок: ${r.errors.length}`);});
  const update=(index:number,patch:Partial<Row>)=>setRows(l=>l.map((r,i)=>i===index?{...r,...patch}:r));
- const perform=()=>run(async()=>{
+ const perform=()=>{const replaced=rows.filter(r=>!r.done&&r.action==='replace'&&r.record.kind==='character').map(r=>`• «${heroes.find(c=>c.id===r.target)?.name??'не выбран'}» ← «${r.record.value.name}»`);if(replaced.length&&!window.confirm(`Будут заменены данные ваших героев:\n${replaced.join('\n')}\n\nПродолжить?`))return;return performConfirmed();};
+ const performConfirmed=()=>run(async()=>{
  let saved=0;
  for(let idx=0;idx<rows.length;idx++){if(cancel.current)break;const row=rows[idx];if(!row)continue;if(row.done||row.action==='skip')continue;const uploaded:string[]=[];
  setProgress(`${idx+1} / ${rows.length}: ${row.record.value.name}`);
@@ -38,7 +39,6 @@ export function TransferPage({initialId}:{initialId?:string|undefined}){
  if(row.record.kind==='character'){
  const original=row.record.value;const id=row.action==='replace'?row.target:row.commitId;
  const existing=row.action==='replace'?snapshot.find(r=>r.id===id):undefined;if(row.action==='replace'&&!existing)throw new Error('Выберите своего героя для замены');
- if(row.action==='replace'&&!window.confirm(`Заменить данные «${heroes.find(c=>c.id===id)?.name}» данными «${original.name}»?`)){continue;}
  const c=row.action==='copy'?cloneCharacter(original,id):{...structuredClone(original),id};
  await prepareImportedImages(c.inventory.items,parsed.assets,omit,uploaded);
  await saveFn({data:{character:c,version:existing?.updated_at??null}});
