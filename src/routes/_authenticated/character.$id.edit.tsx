@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { CharacterEditor } from "@/components/CharacterEditor";
 import { useCharacters } from "@/lib/characters-store";
 
-export const Route = createFileRoute("/character/$id/edit")({
+export const Route = createFileRoute("/_authenticated/character/$id/edit")({
   head: () => ({
     meta: [
       { title: "Редактирование персонажа — Летопись героев" },

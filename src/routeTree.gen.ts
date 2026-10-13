@@ -9,104 +9,186 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as NewRouteImport } from './routes/new'
-import { Route as CharacterIdIndexRouteImport } from './routes/character.$id.index'
-import { Route as CharacterIdEditRouteImport } from './routes/character.$id.edit'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedNewRouteImport } from './routes/_authenticated/new'
+import { Route as AuthenticatedCharacterIdIndexRouteImport } from './routes/_authenticated/character.$id.index'
+import { Route as AuthenticatedCharacterIdEditRouteImport } from './routes/_authenticated/character.$id.edit'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const NewRoute = NewRouteImport.update({
+const AuthenticatedNewRoute = AuthenticatedNewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const CharacterIdIndexRoute = CharacterIdIndexRouteImport.update({
-  id: '/character/$id/',
-  path: '/character/$id/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CharacterIdEditRoute = CharacterIdEditRouteImport.update({
-  id: '/character/$id/edit',
-  path: '/character/$id/edit',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const AuthenticatedCharacterIdIndexRoute =
+  AuthenticatedCharacterIdIndexRouteImport.update({
+    id: '/character/$id/',
+    path: '/character/$id/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCharacterIdEditRoute =
+  AuthenticatedCharacterIdEditRouteImport.update({
+    id: '/character/$id/edit',
+    path: '/character/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/new': typeof NewRoute
-  '/character/$id/edit': typeof CharacterIdEditRoute
-  '/character/$id/': typeof CharacterIdIndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/new': typeof AuthenticatedNewRoute
+  '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
+  '/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/new': typeof NewRoute
-  '/character/$id/edit': typeof CharacterIdEditRoute
-  '/character/$id': typeof CharacterIdIndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/new': typeof AuthenticatedNewRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
+  '/character/$id': typeof AuthenticatedCharacterIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/new': typeof NewRoute
-  '/character/$id/edit': typeof CharacterIdEditRoute
-  '/character/$id/': typeof CharacterIdIndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/new': typeof AuthenticatedNewRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
+  '/_authenticated/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/new' | '/character/$id/edit' | '/character/$id/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/new'
+    | '/character/$id/edit'
+    | '/character/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/new' | '/character/$id/edit' | '/character/$id'
-  id: '__root__' | '/' | '/new' | '/character/$id/edit' | '/character/$id/'
+  to:
+    | '/auth'
+    | '/reset-password'
+    | '/new'
+    | '/'
+    | '/character/$id/edit'
+    | '/character/$id'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/auth'
+    | '/reset-password'
+    | '/_authenticated/new'
+    | '/_authenticated/'
+    | '/_authenticated/character/$id/edit'
+    | '/_authenticated/character/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  NewRoute: typeof NewRoute
-  CharacterIdEditRoute: typeof CharacterIdEditRoute
-  CharacterIdIndexRoute: typeof CharacterIdIndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/new': {
-      id: '/new'
+    '/_authenticated/new': {
+      id: '/_authenticated/new'
       path: '/new'
       fullPath: '/new'
-      preLoaderRoute: typeof NewRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/character/$id/': {
-      id: '/character/$id/'
+    '/_authenticated/character/$id/': {
+      id: '/_authenticated/character/$id/'
       path: '/character/$id'
       fullPath: '/character/$id/'
-      preLoaderRoute: typeof CharacterIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCharacterIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/character/$id/edit': {
-      id: '/character/$id/edit'
+    '/_authenticated/character/$id/edit': {
+      id: '/_authenticated/character/$id/edit'
       path: '/character/$id/edit'
       fullPath: '/character/$id/edit'
-      preLoaderRoute: typeof CharacterIdEditRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCharacterIdEditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedNewRoute: typeof AuthenticatedNewRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
+  AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedNewRoute: AuthenticatedNewRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedCharacterIdEditRoute: AuthenticatedCharacterIdEditRoute,
+  AuthenticatedCharacterIdIndexRoute: AuthenticatedCharacterIdIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  NewRoute: NewRoute,
-  CharacterIdEditRoute: CharacterIdEditRoute,
-  CharacterIdIndexRoute: CharacterIdIndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

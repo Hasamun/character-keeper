@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  ArrowLeft, Backpack, Download, History, MoreVertical, NotebookPen, Pencil, Shield, Swords, Trash2,
+  ArrowLeft, Backpack, Download, Heart, Home, ScrollText, History, MoreVertical, NotebookPen, Pencil, Shield, Swords, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,13 @@ import { InventoryTab } from "@/components/InventoryTab";
 import { useCharacters } from "@/lib/characters-store";
 import {
   PRIMARY_STAT_NAMES, SECONDARY_GROUPS, SKILL_TO_PRIMARY, addPrimaryExp, addSecondaryExp, getArmorClass,
-  getCharacterLevel, primaryRequired, secondaryRequired, uid, type Character,
+  getCharacterLevel, getHp, primaryRequired, secondaryRequired, uid, type Character,
 } from "@/lib/rules";
 import { exportCharacter } from "@/lib/storage";
 import { STAT_META, fmtDate } from "@/lib/stat-meta";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/character/$id/")({
+export const Route = createFileRoute("/_authenticated/character/$id/")({
   head: () => ({
     meta: [
       { title: "Персонаж — Летопись героев" },
@@ -36,19 +36,20 @@ export const Route = createFileRoute("/character/$id/")({
   component: CharacterPage,
 });
 
-type Tab = "stats" | "history" | "notes" | "inventory";
+type Tab = "main" | "stats" | "skills" | "inventory" | "history";
 const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
-  { id: "stats", label: "Характеристики", icon: Swords },
-  { id: "history", label: "История", icon: History },
-  { id: "notes", label: "Заметки", icon: NotebookPen },
+  { id: "main", label: "Главная", icon: Home },
+  { id: "stats", label: "Характ.", icon: Swords },
+  { id: "skills", label: "Навыки", icon: ScrollText },
   { id: "inventory", label: "Инвентарь", icon: Backpack },
+  { id: "history", label: "История", icon: History },
 ];
 
 function CharacterPage() {
   const { id } = Route.useParams();
   const { ready, get, upsert, remove } = useCharacters();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("stats");
+  const [tab, setTab] = useState<Tab>("main");
   const [target, setTarget] = useState<{ type: "primary" | "secondary"; name: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -80,13 +81,14 @@ function CharacterPage() {
           <h1 className="text-3xl font-bold text-gold">{c.name}</h1>
           <p className="text-muted-foreground">{c.race} · {c.characterClass}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Badge label="Уровень" value={getCharacterLevel(c)} icon={<Swords className="h-4 w-4 text-primary" />} />
-          <Badge label="КБ" value={getArmorClass(c)} icon={<Shield className="h-4 w-4 text-primary" />} title="10 + уровень Ловкости" />
+          <Badge label="HP" value={getHp(c)} icon={<Heart className="h-4 w-4 text-destructive" />} />
+          <Badge label="КБ" value={getArmorClass(c)} icon={<Shield className="h-4 w-4 text-primary" />} />
         </div>
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur sm:static sm:mb-5 sm:flex sm:gap-2 sm:border-0 sm:bg-transparent">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-background/95 backdrop-blur sm:static sm:mb-5 sm:flex sm:gap-2 sm:border-0 sm:bg-transparent">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -101,9 +103,16 @@ function CharacterPage() {
         ))}
       </nav>
 
+      {tab === "main" && <NotesTab c={c} save={upsert} />}
       {tab === "stats" && <StatsTab c={c} onPick={setTarget} />}
+      {tab === "skills" && (
+        <div className="panel grid place-items-center gap-3 p-12 text-center">
+          <ScrollText className="h-12 w-12 text-primary/70" />
+          <h2 className="text-xl">Навыки</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">Раздел способностей и умений героя появится позже.</p>
+        </div>
+      )}
       {tab === "history" && <HistoryTab c={c} />}
-      {tab === "notes" && <NotesTab c={c} save={upsert} />}
       {tab === "inventory" && <InventoryTab c={c} save={upsert} />}
 
       <ExpDialog c={c} target={target} onClose={() => setTarget(null)} save={upsert} />
@@ -200,11 +209,12 @@ function ExpDialog({ c, target, onClose, save }: {
   const apply = (sign: 1 | -1) => {
     if (!target) return;
     const n = Math.trunc(Number(amount));
-    if (!Number.isFinite(n) || n <= 0) { toast.error("Введите положительное число"); return; }
-    const r = target.type === "primary" ? addPrimaryExp(c, target.name, sign * n) : addSecondaryExp(c, target.name, sign * n);
+    if (!Number.isFinite(n) || n === 0) { toast.error("Введите целое число, например 15 или -15"); return; }
+    const delta = sign > 0 ? n : -Math.abs(n);
+    const r = target.type === "primary" ? addPrimaryExp(c, target.name, delta) : addSecondaryExp(c, target.name, delta);
     save(r.character);
     if (r.error) toast.warning(r.error);
-    else toast.success(`${target.name}: ${sign > 0 ? "+" : "−"}${n} опыта`);
+    else toast.success(`${target.name}: ${delta > 0 ? "+" : "−"}${Math.abs(delta)} опыта`);
     setAmount("");
   };
   const s = target ? (target.type === "primary" ? c.primary[target.name] : c.secondary[target.name]) : null;
@@ -219,14 +229,14 @@ function ExpDialog({ c, target, onClose, save }: {
             {target?.type === "secondary" && <><br />Повышение уровня даёт бонус опыта в «{SKILL_TO_PRIMARY[target.name]}».</>}
           </DialogDescription>
         </DialogHeader>
-        <Input type="number" inputMode="numeric" min={1} autoFocus placeholder="Количество опыта" value={amount} onChange={(e) => setAmount(e.target.value)}
+        <Input type="number" inputMode="numeric" step={1} autoFocus placeholder="Опыт (минус — снять)" value={amount} onChange={(e) => setAmount(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && apply(1)} className="h-12 text-center text-lg" />
         <div className="grid grid-cols-4 gap-2">
           {QUICK.map((q) => (
             <Button key={q} variant="secondary" onClick={() => setAmount(String((Number(amount) || 0) + q))}>+{q}</Button>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button variant="outline" size="lg" onClick={() => apply(-1)}>Убрать</Button>
           <Button variant="gold" size="lg" onClick={() => apply(1)}>Добавить</Button>
         </div>
@@ -263,6 +273,7 @@ function NotesTab({ c, save }: { c: Character; save: (c: Character) => void }) {
   };
   return (
     <div className="grid gap-4">
+      <h2 className="flex items-center gap-2 text-lg"><NotebookPen className="h-5 w-5 text-primary" /> Заметки</h2>
       <div className="panel grid gap-3 p-4">
         <Input placeholder="Тема заметки" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
         <Textarea rows={3} placeholder="Текст заметки…" value={text} onChange={(e) => setText(e.target.value)} />

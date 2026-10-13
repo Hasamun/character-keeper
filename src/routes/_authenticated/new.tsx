@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CharacterEditor } from "@/components/CharacterEditor";
 
-export const Route = createFileRoute("/new")({
+export const Route = createFileRoute("/_authenticated/new")({
   head: () => ({
     meta: [
       { title: "Новый персонаж — Летопись героев" },
