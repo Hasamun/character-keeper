@@ -1,7 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { catalogTemplate, catalogCopy, catalogSearch } from '@/lib/rules/catalog';
-import { uid } from '@/lib/rules';
+import { normalizeCharacter } from './storage';
+import { addItem } from './rules/inventory';
+import { pushLog, uid } from '@/lib/rules';
 import type { Json } from '@/integrations/supabase/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -64,9 +66,18 @@ export const submitCatalog = createServerFn({method:'POST'}).middleware([require
 });
 export const addCatalogItem = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator((d:{catalogId:string;characterId:string})=>d).handler(async({data,context})=>{
  await access(context.supabase,context.userId);
- const {data:c}=await context.supabase.from('characters').select('id').eq('id',data.characterId).eq('owner_id',context.userId).maybeSingle();if(!c)throw new Error('Персонаж недоступен');
+ const {data:c}=await context.supabase.from('characters').select('*').eq('id',data.characterId).eq('owner_id',context.userId).maybeSingle();if(!c)throw new Error('Персонаж недоступен');
  const {data:r}=await context.supabase.from('catalog_items').select('data').eq('id',data.catalogId).eq('archived',false).maybeSingle();if(!r)throw new Error('Предмет недоступен');
- const copied=await copyImages(context.supabase,r.data,context.userId,'item-images',uid());return copied.item;
+ const copied=await copyImages(context.supabase,r.data,context.userId,'item-images',uid());
+ try {
+  const character=normalizeCharacter(c.data);
+  character.inventory=addItem(character.inventory,copied.item).inventory;
+  pushLog(character,`Добавлен из каталога «${copied.item.name}»`);
+  character.updatedAt=new Date().toISOString();
+  const saved=await context.supabase.from('characters').update({data:asJson(character),updated_at:character.updatedAt}).eq('id',c.id).eq('owner_id',context.userId).eq('updated_at',c.updated_at).select('id').maybeSingle();
+  if(saved.error||!saved.data)throw new Error('Персонаж изменился. Обновите страницу и повторите добавление');
+  return copied.item;
+ }catch(e){await copied.cleanup();throw e;}
 });
 export const reviewCatalog = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator((d:{id:string;revision:number;approve:boolean;reason:string})=>d).handler(async({data,context})=>{
  await access(context.supabase,context.userId,true); const {error}=await context.supabase.rpc('review_catalog',{_id:data.id,_revision:data.revision,_approve:data.approve,_reason:data.reason});if(error)throw new Error(error.message.includes('уже')?'Предложение уже изменено или рассмотрено':'Не удалось сохранить решение');return {ok:true};

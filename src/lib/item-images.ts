@@ -13,7 +13,9 @@ function thumbnail(file: File, max = 400): Promise<Blob> {
       const canvas = document.createElement("canvas");
       canvas.width = Math.round(img.width * k);
       canvas.height = Math.round(img.height * k);
-      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext("2d");
+      if (!context) { URL.revokeObjectURL(img.src); reject(new Error("Не удалось обработать изображение")); return; }
+      context.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(img.src);
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("thumb"))), "image/webp", 0.85);
     };
@@ -43,7 +45,7 @@ export function clearItemImageCache() { cache.clear(); }
 
 const cache = new Map<string, { url: string; exp: number }>();
 
-/** Signed URL for a private image path (cached ~50 minutes). */
+/** Signed URL for a private image path (cached 45 seconds). */
 export function useItemImage(path: string | undefined) {
   const hit = path ? cache.get(path) : undefined;
   const [url, setUrl] = useState<string | null>(hit && hit.exp > Date.now() ? hit.url : null);

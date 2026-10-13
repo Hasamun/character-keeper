@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface Store {
+  refresh: () => Promise<void>;
   ready: boolean;
   characters: Character[];
   get: (id: string) => Character | undefined;
@@ -76,13 +77,19 @@ export function CharactersProvider({ userId, children }: { userId: string; child
   };
 
   const value: Store = {
+    refresh: async () => {
+      if (!allowed) return;
+      const { data, error } = await supabase.from("characters").select("data").order("created_at");
+      if (error) throw new Error("Не удалось обновить героев");
+      setCharacters((data ?? []).map(r => normalizeCharacter(r.data)));
+    },
     ready,
     characters,
     get: (id) => characters.find((c) => c.id === id),
     upsert: (c) => {
+      if (!allowed) return Promise.reject(new Error("Доступ закрыт"));
       const u = { ...reconcileEffects(c), updatedAt: new Date().toISOString() };
       setCharacters((l) => (l.some((x) => x.id === c.id) ? l.map((x) => (x.id === c.id ? u : x)) : [...l, u]));
-      if (!allowed) return Promise.resolve();
       const write = persist(u);
       void write.catch(() => undefined);
       return write;

@@ -1,0 +1,5 @@
+CREATE INDEX submission_owner_time_idx ON public.catalog_submissions(owner_id,updated_at DESC);
+ALTER POLICY active_item_storage ON storage.objects USING (public.account_active()) WITH CHECK (public.account_active());
+ALTER POLICY catalog_image_read ON storage.objects USING(bucket_id='catalog-images' AND public.account_active() AND (EXISTS(SELECT 1 FROM public.catalog_items c WHERE (NOT c.archived OR c.owner_id=auth.uid()) AND ((c.data->>'image')='catalog:'||name OR (c.data->>'thumb')='catalog:'||name)) OR EXISTS(SELECT 1 FROM public.catalog_submissions s WHERE s.owner_id=auth.uid() AND ((s.data->>'image')='catalog:'||name OR (s.data->>'thumb')='catalog:'||name)) OR public.has_role(auth.uid(),'admin')));
+CREATE OR REPLACE FUNCTION public.prevent_silent_catalog_restore() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN IF OLD.archived AND NOT NEW.archived THEN NEW.archived=true; END IF; RETURN NEW; END $$;
+CREATE TRIGGER prevent_silent_catalog_restore BEFORE UPDATE ON public.catalog_items FOR EACH ROW EXECUTE FUNCTION public.prevent_silent_catalog_restore();
