@@ -3,7 +3,6 @@ import {Link} from '@tanstack/react-router';
 import {useServerFn} from '@tanstack/react-start';
 import {ArrowLeft,Download,Upload,Archive,FileImage,RefreshCw,Square} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
 import {Checkbox} from '@/components/ui/checkbox';
 import {toast} from 'sonner';
 import {useCharacters} from '@/lib/characters-store';
@@ -12,8 +11,9 @@ import {submitCatalog} from '@/lib/catalog.functions';
 import {cloneCharacter,duplicateHint,type TransferRecord} from '@/lib/rules/transfer';
 import {normalizeCharacter} from '@/lib/storage';
 import {uid,type Character} from '@/lib/rules';
-import {addItem,type Item} from '@/lib/rules/inventory';
-import {deliverFile,friendlyError,itemsCsv,parseTransferFiles,type ParsedTransfer} from '@/lib/transfer-files';
+import {addItem,CATEGORY_LABELS,type Item} from '@/lib/rules/inventory';
+import {deliverFile,friendlyError,itemsCsv,type ParsedTransfer} from '@/lib/transfer-files';
+import {deriveCharacter} from '@/lib/rules/derived';
 import {attachImage,avatarImage,cardPng,cleanupImportedImages,portableArchive,prepareImportedImages} from '@/lib/transfer-media';
 
 type Row={record:TransferRecord;action:'copy'|'skip'|'replace';target:string;result?:string;done?:boolean;commitId:string;};
@@ -28,7 +28,7 @@ export function TransferPage({initialId}:{initialId?:string|undefined}){
  const refresh=async()=>{await store.flush();const r=await snapshotFn();setSnapshot(r);return r;};
  useEffect(()=>{void refresh().catch(e=>toast.error(friendlyError(e)));},[]);
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);cancel.current=false;setOutput(null);try{await fn();}catch(e){toast.error(friendlyError(e));setProgress(friendlyError(e));}finally{setBusy(false);}};
- const readFiles=(list:File[])=>run(async()=>{setProgress('Чтение файлов');const r=await parseTransferFiles(list);setParsed(r);setRows(r.records.map(record=>({record,action:'copy',target:'',commitId:uid()})));setProgress(`Записей: ${r.records.length}; ошибок: ${r.errors.length}`);});
+ const readFiles=(list:File[])=>run(async()=>{setProgress('Чтение файлов');const worker=new Worker(new URL('../lib/transfer-worker.ts',import.meta.url),{type:'module'});const r=await new Promise<ParsedTransfer>((resolve,reject)=>{worker.onmessage=e=>{worker.terminate();if(e.data.error)reject(new Error(e.data.error));else resolve(e.data.result);};worker.onerror=()=>{worker.terminate();reject(new Error('Не удалось прочитать файлы'));};worker.postMessage(list);});setParsed(r);setRows(r.records.map(record=>({record,action:'copy',target:'',commitId:uid()})));setProgress(`Записей: ${r.records.length}; ошибок: ${r.errors.length}`);});
  const update=(index:number,patch:Partial<Row>)=>setRows(l=>l.map((r,i)=>i===index?{...r,...patch}:r));
  const perform=()=>run(async()=>{
  let saved=0;
@@ -54,7 +54,7 @@ export function TransferPage({initialId}:{initialId?:string|undefined}){
  });
  const exportFile=()=>run(async()=>{
  const fresh=await refresh();const picked=fresh.filter(r=>selected.includes(r.id)).map(r=>normalizeCharacter(r.data));if(!picked.length)throw new Error('Выберите героев');
- const records:(Character|Item)[]=exportKind==='items'?picked.flatMap(c=>c.inventory.items):picked;if(!records.length)throw new Error('Нет предметов для экспорта');
+ const records:(Character|Item)[]=tab!=='backup'&&exportKind==='items'?picked.flatMap(c=>c.inventory.items):picked;if(!records.length)throw new Error('Нет предметов для экспорта');
  let blob:Blob;let ext=format;
  if(tab==='backup'||format==='zip'){if(tab==='backup'&&!consent)throw new Error('Подтвердите сохранение личных данных');blob=await portableArchive(records,setProgress,()=>cancel.current);ext='zip';}
  else if(format==='png'){const value=exportKind==='items'?records.find(i=>i.id===exportItem):picked[0];if(!value||exportKind==='characters'&&picked.length!==1)throw new Error('Выберите одну карточку');blob=await cardPng(value);}
