@@ -16,3 +16,6 @@
 - Starting free exp in the creation editor is always derived from current levels (`computeFreeExp`), never kept as a running counter — prevents up/down exploits.
 - Inventory items always stay in `inventory.items`; slots, weapon sets and belt only hold item ids (`src/lib/rules/inventory.ts`) — one source of truth, safe deletes.
 - Item images live in private storage bucket `item-images` under `{user_id}/{item_id}/` (owner-only policies); items store storage paths, UI reads signed URLs via `useItemImage` — keeps images private and character JSON small.
+
+- Derived combat values and comparison use `deriveCharacter` in `src/lib/rules/derived.ts`, never mutate base stats/experience — one calculation keeps equipment and previews consistent.
+- Item use operations live in the same pure rules module; optional active effects and remaining charges persist in character JSON through the existing provider, which reconciles unequipped effects — avoids a second storage system.

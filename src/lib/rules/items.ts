@@ -40,6 +40,7 @@ export interface Effect {
   condition?: string | undefined;
   duration?: string | undefined;
   charges?: number | undefined;
+  remainingCharges?: number | undefined;
   description?: string | undefined;
   automation: Automation;
 }
@@ -60,6 +61,7 @@ export function normalizeEffect(raw: any): Effect | null {
     condition: opt(raw.condition),
     duration: opt(raw.duration),
     charges: raw.charges == null || raw.charges === "" ? undefined : Math.max(0, Math.trunc(num(raw.charges))),
+    remainingCharges: raw.charges == null || raw.charges === "" ? undefined : Math.max(0, Math.min(Math.max(0, Math.trunc(num(raw.charges))), Math.trunc(num(raw.remainingCharges, num(raw.charges))))),
     description: opt(raw.description),
     automation: ["auto", "confirm", "manual"].includes(raw.automation) ? raw.automation : "auto",
   };
@@ -131,7 +133,7 @@ export function equipmentWarnings(c: Character, inv: Inventory): ItemWarning[] {
     const it = byId(id);
     if (!it) continue;
     for (const r of unmetRequirements(c, it)) {
-      out.push({ kind: "requirement", text: `«${it.name}»: нужна ${r.stat} ${r.min}, у героя ${r.have}. Штраф ${r.have - r.min} к броскам с этим предметом.` });
+      out.push({ kind: "requirement", text: `«${it.name}»: нужна ${r.stat} ${r.min}, у героя ${r.have}.` });
     }
   }
   return out;

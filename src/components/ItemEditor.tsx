@@ -12,7 +12,7 @@ import { PRIMARY_STAT_NAMES, uid } from "@/lib/rules";
 import { CATEGORY_LABELS, MAX_BELT, MIN_BELT, SLOT_KIND_LABELS, type Item, type ItemCategory, type ItemSlotKind } from "@/lib/rules/inventory";
 import {
   ATTACK_MODE_LABELS, DAMAGE_TYPES, EFFECT_KIND_LABELS, RANKS, SUBTYPES,
-  type AttackMode, type Effect, type EffectKind, type Rank,
+  type Automation, type AttackMode, type Effect, type EffectKind, type Rank,
 } from "@/lib/rules/items";
 import { IMAGE_TYPES, uploadItemImage, useItemImage } from "@/lib/item-images";
 
@@ -130,7 +130,7 @@ function Form({ initial, onSave }: { initial: Item; onSave: (i: Item) => void })
                   <div className="grid gap-1.5"><Label htmlFor="it-atk">Бонус атаки</Label>
                     <Input id="it-atk" type="number" value={w.attackBonus} onChange={(e) => sw({ attackBonus: Number(e.target.value) || 0 })} /></div>
                   <Sel label="Тип урона" value={w.damageType || DAMAGE_TYPES[0]} options={DAMAGE_TYPES} onChange={(v) => sw({ damageType: v })} />
-                  <Sel label="Урон зависит от" value={w.attackMode} options={ATTACK_MODE_LABELS} onChange={(v: AttackMode) => sw({ attackMode: v })} />
+                  <Sel label="Атака зависит от" value={w.attackMode} options={ATTACK_MODE_LABELS} onChange={(v: AttackMode) => sw({ attackMode: v })} />
                   <label className="col-span-2 flex items-center gap-2 text-sm"><Switch checked={w.twoHanded} onCheckedChange={(v) => sw({ twoHanded: v })} /> Двуручное</label>
                 </div>
               );
@@ -153,10 +153,10 @@ function Form({ initial, onSave }: { initial: Item; onSave: (i: Item) => void })
           {(i.requirements ?? []).map((r, k) => (
             <div key={k} className="flex items-end gap-2">
               <div className="flex-1"><Sel label="Характеристика" value={r.stat} options={PRIMARY_STAT_NAMES}
-                onChange={(v) => set({ requirements: i.requirements!.map((x, j) => (j === k ? { ...x, stat: v } : x)) })} /></div>
+                onChange={(v) => set({ requirements: (i.requirements ?? []).map((x, j) => (j === k ? { ...x, stat: v } : x)) })} /></div>
               <div className="grid w-20 gap-1.5"><Label>Мин.</Label>
-                <Input type="number" value={r.min} onChange={(e) => set({ requirements: i.requirements!.map((x, j) => (j === k ? { ...x, min: Number(e.target.value) || 0 } : x)) })} /></div>
-              <Button size="icon" variant="ghost" aria-label="Убрать требование" onClick={() => set({ requirements: i.requirements!.filter((_, j) => j !== k) })}><Trash2 /></Button>
+                <Input type="number" value={r.min} onChange={(e) => set({ requirements: (i.requirements ?? []).map((x, j) => (j === k ? { ...x, min: Number(e.target.value) || 0 } : x)) })} /></div>
+              <Button size="icon" variant="ghost" aria-label="Убрать требование" onClick={() => set({ requirements: (i.requirements ?? []).filter((_, j) => j !== k) })}><Trash2 /></Button>
             </div>
           ))}
           <Button size="sm" variant="outline" onClick={() => set({ requirements: [...(i.requirements ?? []), { stat: "Сила", min: 1 }] })}><Plus /> Требование</Button>
@@ -168,7 +168,7 @@ function Form({ initial, onSave }: { initial: Item; onSave: (i: Item) => void })
             <div key={e.id} className="grid gap-2 rounded-md bg-muted/30 p-2">
               <div className="flex items-end gap-2">
                 <div className="flex-1"><Sel label="Тип" value={e.kind} options={EFFECT_KIND_LABELS} onChange={(v: EffectKind) => setEffect(k, { kind: v })} /></div>
-                <Button size="icon" variant="ghost" aria-label="Убрать эффект" onClick={() => set({ effects: i.effects!.filter((_, j) => j !== k) })}><Trash2 /></Button>
+                <Button size="icon" variant="ghost" aria-label="Убрать эффект" onClick={() => set({ effects: (i.effects ?? []).filter((_, j) => j !== k) })}><Trash2 /></Button>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div className="grid gap-1"><Label className="text-xs">Цель / название</Label>
@@ -182,8 +182,9 @@ function Form({ initial, onSave }: { initial: Item; onSave: (i: Item) => void })
                 <div className="grid gap-1"><Label className="text-xs">Длительность</Label>
                   <Input value={e.duration ?? ""} onChange={(ev) => setEffect(k, { duration: ev.target.value || undefined })} /></div>
                 <div className="grid gap-1"><Label className="text-xs">Заряды</Label>
-                  <Input type="number" min={0} value={e.charges ?? ""} onChange={(ev) => setEffect(k, { charges: numOrU(ev.target.value) })} /></div>
+                  <Input type="number" min={0} value={e.charges ?? ""} onChange={(ev) => setEffect(k, { charges: numOrU(ev.target.value), remainingCharges: e.remainingCharges ?? e.charges ?? numOrU(ev.target.value) })} /></div>
               </div>
+              <Sel label="Применение" value={e.automation} options={{ auto: "Автоматически", confirm: "С подтверждением", manual: "Вручную" }} onChange={(v: Automation) => setEffect(k, { automation: v })} />
               <Input placeholder="Описание правила (необязательно)" value={e.description ?? ""} onChange={(ev) => setEffect(k, { description: ev.target.value || undefined })} />
             </div>
           ))}
