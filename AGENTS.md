@@ -11,6 +11,7 @@
 
 ## Project rules
 - Game rules live as pure functions in `src/lib/rules/` and are covered by tests; UI never reimplements them — keeps the ported system faithful to the original.
-- Characters persist in browser localStorage via `src/lib/storage.ts` + `CharactersProvider`, read only after mount — single-user, no backend, avoids hydration mismatch.
+- Characters persist in Lovable Cloud table `characters` (whole character as `data` jsonb, owner-only RLS) via `CharactersProvider`; localStorage is only a one-time migration source — keeps the existing character format and rules untouched.
+- All app pages live under `src/routes/_authenticated/` (client-only gate); roles live in `user_roles` + `has_role()` — never in profiles.
 - Starting free exp in the creation editor is always derived from current levels (`computeFreeExp`), never kept as a running counter — prevents up/down exploits.
 - Inventory items always stay in `inventory.items`; slots, weapon sets and belt only hold item ids (`src/lib/rules/inventory.ts`) — one source of truth, safe deletes.
