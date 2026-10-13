@@ -22,7 +22,7 @@ export function SharedCharacter({id}:{id:string}) {
   const read=useServerFn(getSharedCharacter),write=useServerFn(sharedAction);
   const q=useQuery({queryKey:['shared-character',id],queryFn:()=>read({data:{id}}),refetchInterval:5000,retry:false});
   const [tab,setTab]=useState<ShareSection>('bio');const[title,setTitle]=useState('');const[text,setText]=useState('');const[amount,setAmount]=useState('');const[target,setTarget]=useState<{type:'primaryExp'|'secondaryExp';name:string}|null>(null);const[selected,setSelected]=useState<Item|null>(null);const[editing,setEditing]=useState<Item|null>(null);
-  const [draftVersion, setDraftVersion] = useState<string>();
+  const [draftVersion, setDraftVersion] = useState('');
   const [savedRevision, setSavedRevision] = useState(0);
   const m=useMutation({mutationFn:(command:Command)=>write({data:{id,version:q.data?.version??'',...command}}),onSuccess:()=>{setSavedRevision(v=>v+1);q.refetch();toast.success('Изменения сохранены');setTarget(null);setEditing(null)},onError:e=>{toast.error(e.message);q.refetch()}});
   if(q.isPending)return <p className="p-6">Загружаем персонажа…</p>;
