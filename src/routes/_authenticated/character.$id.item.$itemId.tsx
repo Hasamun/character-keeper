@@ -111,7 +111,7 @@ function ItemPage() {
         </div>
       </div>
 
-      <ItemUseActions c={c} item={item} save={upsert} afterUse={() => { if (item.quantity === 1 && item.category === "consumable" && !item.effects?.some(e => e.charges != null)) back(); }} />
+      <ItemUseActions c={c} item={item} save={upsert} afterUse={next => { if (!findItem(next.inventory, item.id)) back(); }} />
       <ItemComparison c={c} item={item} open={comparing} onClose={() => setComparing(false)} />
 
       {unmet.length > 0 && (

@@ -22,6 +22,7 @@ export function deriveCharacter(c: Character) {
   const worn = wornItems(c);
   const sources = worn.flatMap(i => (i.effects ?? []).filter(automatic).map(effect => ({ source: i.name, effect })));
   const boundKeys = new Set<string>();
+  const standaloneKeys = new Set<string>();
   for (const a of c.activeEffects ?? []) {
     if (a.equipmentBound) {
       const item = worn.find(i => i.id === a.sourceItemId);
@@ -30,7 +31,12 @@ export function deriveCharacter(c: Character) {
       if (!effect || automatic(effect) || boundKeys.has(key)) continue;
       boundKeys.add(key);
       sources.push({ source: item?.name ?? a.sourceName, effect });
-    } else sources.push({ source: a.sourceName, effect: a.effect });
+    } else {
+      const key = `${a.sourceItemId}:${a.effect.id}`;
+      if (standaloneKeys.has(key)) continue;
+      standaloneKeys.add(key);
+      sources.push({ source: a.sourceName, effect: a.effect });
+    }
   }
   let acBonus = worn.reduce((sum, i) => sum + (i.armor?.ac ?? 0), 0), attackBonus = 0, damageBonus = 0;
   const resistances = new Set<string>(), vulnerabilities = new Set<string>(), extraDamage: string[] = [], descriptions: string[] = [], warnings: string[] = [];
@@ -44,7 +50,7 @@ export function deriveCharacter(c: Character) {
     else if (e.kind === 'damage') { if (!e.target) damageBonus += e.value; }
     else if (e.kind === 'resistance') resistances.add(e.damageType || e.target);
     else if (e.kind === 'vulnerability') vulnerabilities.add(e.damageType || e.target);
-    else if (e.kind === 'extra_damage' && !e.condition) extraDamage.push(effectLabel(e));
+    else if (e.kind === 'extra_damage') extraDamage.push(effectLabel(e));
     else descriptions.push(`${source}: ${effectLabel(e)}`);
   }
   const effective: Character = { ...c, primary: Object.fromEntries(Object.entries(c.primary).map(([n, s]) => [n, { ...s, level: primary[n] ?? s.level }])), secondary: Object.fromEntries(Object.entries(c.secondary).map(([n, s]) => [n, { ...s, level: secondary[n] ?? s.level }])) };
@@ -86,7 +92,7 @@ export function useItem(c: Character, itemId: string, effectId?: string): { char
   const used = e ? withHistory({ ...i, effects: (i.effects ?? []).map(x => x.id === e.id ? { ...x, remainingCharges: (x.remainingCharges ?? x.charges ?? 0) - 1 } : x) }, `Потрачен заряд: ${effectLabel(e)}`) : withHistory({ ...i, quantity: i.quantity - 1 }, 'Использована 1 шт.');
   const inventory = used.quantity === 0 ? removeItem(c.inventory, i.id) : { ...c.inventory, items: c.inventory.items.map(x => x.id === i.id ? used : x) };
   const effects = e ? [e] : (i.effects ?? []).filter(x => x.charges == null);
-  const next: Character = { ...c, inventory, log: [...c.log], activeEffects: [...(c.activeEffects ?? []), ...effects.map(effect => ({ id: uid(), sourceItemId: i.id, sourceName: i.name, effect: { ...effect }, equipmentBound: i.category === 'gear' }))] };
+  const next: Character = { ...c, inventory, log: [...c.log], activeEffects: [...(c.activeEffects ?? []).filter(a => a.sourceItemId !== i.id || !effects.some(e => e.id === a.effect.id)), ...effects.map(effect => ({ id: uid(), sourceItemId: i.id, sourceName: i.name, effect: { ...effect }, equipmentBound: i.category === 'gear' }))] };
   pushLog(next, `Использован «${i.name}»: ${e ? `1 заряд (${effectLabel(e)})` : '1 шт.'}`);
   return { character: next, error: null };
 }

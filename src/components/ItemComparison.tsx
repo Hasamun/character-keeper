@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Character } from '@/lib/rules';
-import { HAND_LABELS, SLOTS, type Item } from '@/lib/rules/inventory';
+import { CATEGORY_LABELS, SLOT_KIND_LABELS, HAND_LABELS, SLOTS, type Item } from '@/lib/rules/inventory';
 import { comparable, comparisonSlots, compareReplacement, type CompareSlot } from '@/lib/rules/derived';
 import { effectLabel, ATTACK_MODE_LABELS } from '@/lib/rules/items';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ export function ItemComparison({ c, item, open, onClose }: { c: Character; item:
   const slot = chosenSlot && slots.includes(chosenSlot) ? chosenSlot : slots[0];
   const result = other && slot ? compareReplacement(c, item.id, other.id, slot) : null;
   const rows: [string, (i: Item) => string][] = [
-    ['Ранг', i => i.rank ?? 'F'], ['Тип', i => i.subtype ?? i.slot ?? i.category], ['Урон', i => i.weapon ? `${i.weapon.damage} (${i.weapon.damageType})` : '—'], ['Бонус атаки', i => String(i.weapon?.attackBonus ?? 0)], ['Атака зависит от', i => i.weapon ? ATTACK_MODE_LABELS[i.weapon.attackMode] : '—'], ['Хват', i => i.weapon ? i.weapon.twoHanded ? 'Двуручное' : 'Одноручное' : '—'], ['Бонус КБ', i => String(i.armor?.ac ?? 0)], ['Требования', i => (i.requirements ?? []).map(r => `${r.stat} ≥ ${r.min}`).join('; ') || '—'], ['Эффекты', i => (i.effects ?? []).map(e => `${effectLabel(e)}${e.condition ? ` (${e.condition})` : ''}${e.charges != null ? ` · ${e.remainingCharges ?? e.charges}/${e.charges}` : ''}`).join('; ') || '—'], ['Цена', i => i.price == null ? '—' : `${i.price} зм`], ['Вес', i => String(i.weight ?? '—')],
+    ['Ранг', i => i.rank ?? 'F'], ['Тип', i => i.subtype ?? (i.slot ? SLOT_KIND_LABELS[i.slot] : CATEGORY_LABELS[i.category])], ['Урон', i => i.weapon ? `${i.weapon.damage} (${i.weapon.damageType})` : '—'], ['Бонус атаки', i => String(i.weapon?.attackBonus ?? 0)], ['Атака зависит от', i => i.weapon ? ATTACK_MODE_LABELS[i.weapon.attackMode] : '—'], ['Хват', i => i.weapon ? i.weapon.twoHanded ? 'Двуручное' : 'Одноручное' : '—'], ['Бонус КБ', i => String(i.armor?.ac ?? 0)], ['Требования', i => (i.requirements ?? []).map(r => `${r.stat} ≥ ${r.min}`).join('; ') || '—'], ['Эффекты', i => (i.effects ?? []).map(e => `${effectLabel(e)}${e.condition ? ` (${e.condition})` : ''}${e.charges != null ? ` · ${e.remainingCharges ?? e.charges}/${e.charges}` : ''}`).join('; ') || '—'], ['Цена', i => i.price == null ? '—' : `${i.price} зм`], ['Вес', i => String(i.weight ?? '—')],
   ];
   return <Dialog open={open} onOpenChange={o => !o && onClose()}><DialogContent className="max-h-[85dvh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Сравнение предметов</DialogTitle><DialogDescription>{item.name} · {c.name}</DialogDescription></DialogHeader>
     <Select value={other?.id ?? ''} onValueChange={setOtherId}><SelectTrigger aria-label="Второй предмет"><SelectValue placeholder="Выберите второй предмет" /></SelectTrigger><SelectContent>{candidates.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent></Select>
