@@ -31,7 +31,7 @@ export async function parseTransferFiles(files:File[]):Promise<ParsedTransfer> {
  const prefix='images/'+crypto.randomUUID()+'/';
  const rename=new Map<string,string>();
  for(const [path,data] of Object.entries(entries)){if(path==='manifest.json')continue;if(!/^images\/.+\.(png|jpe?g|webp)$/i.test(path))throw new Error('Неподдерживаемый файл в архиве');const dest=prefix+path.split('/').pop();if(rename.has(path)||out.assets.has(dest))throw new Error('Повтор имени изображения');rename.set(path,dest);out.assets.set(dest,new File([data as BlobPart],dest,{type:/\.png$/i.test(path)?'image/png':/\.webp$/i.test(path)?'image/webp':'image/jpeg'}));}
- raw=doc.records.map((r:unknown)=>{const x=structuredClone(r) as Record<string,unknown>;const items='category' in x?[x]:(x.inventory as {items?:Record<string,unknown>[]} | undefined)?.items??[];for(const i of items)for(const k of ['image','thumb']){const p=i[k];if(typeof p==='string'&&p.startsWith('asset:')){const n=rename.get(p.slice(6));if(!n)throw new Error('Отсутствует изображение архива');i[k]='asset:'+n;}}return x;});
+ raw=doc.records.map((r:unknown)=>{const x=structuredClone(r) as Record<string,unknown>;const items='category' in x?[x]:(x['inventory'] as {items?:Record<string,unknown>[]} | undefined)?.items??[];for(const i of items)for(const k of ['image','thumb']){const p=i[k];if(typeof p==='string'&&p.startsWith('asset:')){const n=rename.get(p.slice(6));if(!n)throw new Error('Отсутствует изображение архива');i[k]='asset:'+n;}}return x;});
  } else if(ext==='csv')raw=parseCsv(await file.text());
  else if(ext==='json')raw=JSON.parse(await file.text());
  else if(['png','jpg','jpeg','webp'].includes(ext??'')){out.assets.set(file.name,file);continue;}
@@ -47,6 +47,6 @@ export function downloadBlob(blob:Blob,name:string) { const url=URL.createObject
 export async function deliverFile(blob:Blob,name:string) {const file=new File([blob],name,{type:blob.type});if(matchMedia('(pointer: coarse)').matches&&navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file],title:name});return;}catch(e){if(e instanceof DOMException&&e.name==='AbortError')return;}}downloadBlob(blob,name);}
 export async function makeArchive(records:unknown[],assets:Map<string,Blob>):Promise<Blob> {
  const entries:Record<string,Uint8Array>={'manifest.json':strToU8(JSON.stringify({format:'chronicle-transfer',version:1,createdAt:new Date().toISOString(),records},null,2))};
- let size=entries['manifest.json'].length;for(const [path,b] of assets){if(!safeArchivePath(path))throw new Error('Некорректный путь');size+=b.size;if(size>TRANSFER_LIMITS.expanded)throw new Error('Копия больше 100 МБ: выберите меньше героев');entries[path]=new Uint8Array(await b.arrayBuffer());}
+ let size=entries['manifest.json']?.length??0;for(const [path,b] of assets){if(!safeArchivePath(path))throw new Error('Некорректный путь');size+=b.size;if(size>TRANSFER_LIMITS.expanded)throw new Error('Копия больше 100 МБ: выберите меньше героев');entries[path]=new Uint8Array(await b.arrayBuffer());}
  const data=await new Promise<Uint8Array>((resolve,reject)=>zip(entries,{level:0},(e,d)=>e?reject(e):resolve(d)));return new Blob([data as BlobPart],{type:'application/zip'});
 }

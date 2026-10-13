@@ -20,11 +20,11 @@ type Row={record:TransferRecord;action:'copy'|'skip'|'replace';target:string;res
 type Snapshot={id:string;data:unknown;updated_at:string}[];
 const empty:ParsedTransfer={records:[],errors:[],assets:new Map()};
 const selectClass='h-10 max-w-full rounded border border-input bg-background px-3 text-sm';
-export function TransferPage({initialId}:{initialId?:string}){
+export function TransferPage({initialId}:{initialId?:string|undefined}){
  const store=useCharacters();const snapshotFn=useServerFn(transferSnapshot);const saveFn=useServerFn(importOwnedCharacter);const catalogFn=useServerFn(submitCatalog);
  const [tab,setTab]=useState<'import'|'export'|'backup'>(initialId?'export':'import');const [snapshot,setSnapshot]=useState<Snapshot>([]);const [rows,setRows]=useState<Row[]>([]);const [parsed,setParsed]=useState(empty);const [busy,setBusy]=useState(false);const [progress,setProgress]=useState('');const cancel=useRef(false);const files=useRef<HTMLInputElement>(null);
  const [destination,setDestination]=useState(initialId??'');const [itemDestination,setItemDestination]=useState<'inventory'|'catalog'>('inventory');const [omit,setOmit]=useState(false);const [selected,setSelected]=useState<string[]>(initialId?[initialId]:[]);const [exportKind,setExportKind]=useState<'characters'|'items'>('characters');const [format,setFormat]=useState<'json'|'zip'|'csv'|'png'>('zip');const [exportItem,setExportItem]=useState('');const [output,setOutput]=useState<{blob:Blob;name:string}|null>(null);const [consent,setConsent]=useState(false);const [imageFile,setImageFile]=useState('');const [imageItem,setImageItem]=useState('avatar');
- const heroes=snapshot.map(r=>normalizeCharacter(r.data));const target=heroes.find(c=>c.id===destination);const exportHero=heroes.find(c=>selected.includes(c.id));
+ const heroes=snapshot.map(r=>normalizeCharacter(r.data));const target=heroes.find(c=>c.id===destination);
  const refresh=async()=>{await store.flush();const r=await snapshotFn();setSnapshot(r);return r;};
  useEffect(()=>{void refresh().catch(e=>toast.error(friendlyError(e)));},[]);
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);cancel.current=false;setOutput(null);try{await fn();}catch(e){toast.error(friendlyError(e));setProgress(friendlyError(e));}finally{setBusy(false);}};
@@ -32,7 +32,7 @@ export function TransferPage({initialId}:{initialId?:string}){
  const update=(index:number,patch:Partial<Row>)=>setRows(l=>l.map((r,i)=>i===index?{...r,...patch}:r));
  const perform=()=>run(async()=>{
  let saved=0;
- for(let idx=0;idx<rows.length;idx++){if(cancel.current)break;const row=rows[idx];if(row.done||row.action==='skip')continue;const uploaded:string[]=[];
+ for(let idx=0;idx<rows.length;idx++){if(cancel.current)break;const row=rows[idx];if(!row)continue;if(row.done||row.action==='skip')continue;const uploaded:string[]=[];
  setProgress(`${idx+1} / ${rows.length}: ${row.record.value.name}`);
  try{
  if(row.record.kind==='character'){
@@ -81,7 +81,7 @@ export function TransferPage({initialId}:{initialId?:string}){
  <div className="divide-y divide-border">{heroes.map(c=><label key={c.id} className="flex items-center gap-3 py-4"><Checkbox checked={selected.includes(c.id)} disabled={busy} onCheckedChange={v=>setSelected(l=>v===true?[...l,c.id]:l.filter(id=>id!==c.id))}/><span className="min-w-0 break-words">{c.name}<span className="ml-3 text-sm text-muted-foreground">{c.inventory.items.length} предметов</span></span></label>)}</div>
  {tab==='export'?<><div className="flex flex-wrap items-center gap-3"><select aria-label="Состав экспорта" className={selectClass} value={exportKind} disabled={busy} onChange={e=>{setExportKind(e.target.value as typeof exportKind);setFormat('zip');}}><option value="characters">Персонажи</option><option value="items">Набор предметов</option></select><select aria-label="Формат экспорта" className={selectClass} value={format} disabled={busy} onChange={e=>setFormat(e.target.value as typeof format)}><option value="zip">ZIP с изображениями</option><option value="json">JSON без изображений предметов</option>{exportKind==='items'&&<option value="csv">CSV</option>}<option value="png">Карточка PNG</option></select>{format==='png'&&exportKind==='items'&&<select aria-label="Предмет для карточки" className={selectClass} value={exportItem} onChange={e=>setExportItem(e.target.value)}><option value="">Выберите предмет</option>{heroes.filter(c=>selected.includes(c.id)).flatMap(c=>c.inventory.items.map(i=><option key={c.id+i.id} value={i.id}>{c.name} · {i.name}</option>))}</select>}</div>{format==='json'&&<p className="text-sm text-muted-foreground">Картинки предметов не включены. Для полного переноса выберите ZIP.</p>}{format==='csv'&&<p className="text-sm text-muted-foreground">Картинки не включены; эффекты и требования сохраняются в JSON-полях.</p>}</>:<><p className="text-sm text-muted-foreground">ZIP с данными выбранных собственных героев и их изображениями. Приглашения, права участников и настройки аккаунта не включены.</p><label className="flex items-start gap-3"><Checkbox checked={consent} onCheckedChange={v=>setConsent(v===true)}/><span className="text-sm">Архив содержит личные данные. Я сохраню его в безопасном месте.</span></label></>}
  <Button variant="gold" disabled={busy||!selected.length||tab==='backup'&&!consent} onClick={()=>void exportFile()}><Archive/>{tab==='backup'?'Создать резервную копию':'Подготовить файл'}</Button>
- {tab==='backup'&&<Button variant="outline" disabled={busy} onClick={()=>{setTab('import');files.current?.click();}}><Upload/>Восстановить из файла</Button>}
+ {tab==='backup'&&<Button variant="outline" disabled={busy} onClick={()=>{setTab('import');setOutput(null);}}><Upload/>Восстановить из файла</Button>}
  </section>}
  <footer className="flex flex-wrap items-center gap-3 border-t border-border pt-4" aria-live="polite"><p className="min-w-0 break-words text-sm text-muted-foreground">{progress}</p>{busy&&<Button variant="outline" onClick={()=>{cancel.current=true;setProgress('Остановка после текущей записи');}}><Square/>Остановить</Button>}{output&&<Button variant="gold" onClick={()=>void deliverFile(output.blob,output.name)}><Download/>Скачать {output.name.split('.').pop()?.toUpperCase()}</Button>}</footer>
  </main>;

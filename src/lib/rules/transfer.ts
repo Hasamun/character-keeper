@@ -45,7 +45,7 @@ export function cloneCharacter(c:Character,newId=uid()):Character {
   const ref=(s:string|null)=>s?remap(s):null;
   copy.inventory.equipped=Object.fromEntries(Object.entries(copy.inventory.equipped).map(([k,v])=>[k,ref(v)])) as Character['inventory']['equipped'];
   copy.inventory.weaponSets=copy.inventory.weaponSets.map(s=>({main:ref(s.main),off:ref(s.off)})) as Character['inventory']['weaponSets'];copy.inventory.belt=copy.inventory.belt.map(ref);
-  copy.activeEffects=copy.activeEffects?.map(a=>({...a,id:uid(),sourceItemId:remap(a.sourceItemId),effect:{...a.effect,id:eff(a.sourceItemId,a.effect.id),target:map.get(a.effect.target)??a.effect.target}}));
+  if(copy.activeEffects)copy.activeEffects=copy.activeEffects.map(a=>({...a,id:uid(),sourceItemId:remap(a.sourceItemId),effect:{...a.effect,id:eff(a.sourceItemId,a.effect.id),target:map.get(a.effect.target)??a.effect.target}}));
   return copy;
 }
 export function duplicateHint(r:TransferRecord,characters:Character[],items:Item[],seen:TransferRecord[]) {
