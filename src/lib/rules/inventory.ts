@@ -1,11 +1,12 @@
 // Inventory model and pure operations. Items always stay in `items`; slots hold item ids.
+import { normalizeItemExtras, stackKey, withHistory, type ArmorStats, type Effect, type ItemHistoryEntry, type Rank, type Requirement, type WeaponStats } from "./items";
 
 export type ItemCategory = "gear" | "consumable" | "misc";
 export type ItemSlotKind =
-  | "helmet" | "chest" | "bracers" | "gloves" | "legs" | "boots" | "earrings" | "amulet" | "ring"
+  | "helmet" | "cloak" | "chest" | "bracers" | "gloves" | "legs" | "boots" | "earrings" | "amulet" | "ring"
   | "weapon" | "offhand" | "belt";
 export type SlotId =
-  | "helmet" | "chest" | "bracers" | "gloves" | "legs" | "boots" | "earrings" | "amulet" | "ring1" | "ring2" | "belt";
+  | "helmet" | "cloak" | "chest" | "bracers" | "gloves" | "legs" | "boots" | "earrings" | "amulet" | "ring1" | "ring2" | "belt";
 export type Hand = "main" | "off";
 
 export interface Item {
@@ -16,6 +17,22 @@ export interface Item {
   beltCapacity?: number | undefined;
   quantity: number;
   description: string;
+  rank?: Rank | undefined;
+  subtype?: string | undefined;
+  image?: string | undefined;
+  thumb?: string | undefined;
+  lore?: string | undefined;
+  weapon?: WeaponStats | undefined;
+  armor?: ArmorStats | undefined;
+  weight?: number | undefined;
+  price?: number | undefined;
+  requirements?: Requirement[] | undefined;
+  effects?: Effect[] | undefined;
+  author?: string | undefined;
+  source?: string | undefined;
+  notes?: string | undefined;
+  history?: ItemHistoryEntry[] | undefined;
+  createdAt?: string | undefined;
 }
 export interface Money { copper: number; silver: number; gold: number; platinum: number }
 export interface WeaponSet { main: string | null; off: string | null }
@@ -31,11 +48,12 @@ export interface Inventory {
 export const CATEGORY_LABELS: Record<ItemCategory, string> = { gear: "Снаряжение", consumable: "Расходники", misc: "Прочее" };
 export const MONEY_LABELS: Record<keyof Money, string> = { copper: "Медь", silver: "Серебро", gold: "Золото", platinum: "Платина" };
 export const SLOT_KIND_LABELS: Record<ItemSlotKind, string> = {
-  helmet: "Шлем", chest: "Нагрудник", bracers: "Наручи", gloves: "Перчатки", legs: "Поножи", boots: "Ботинки",
+  helmet: "Шлем", cloak: "Плащ", chest: "Нагрудник", bracers: "Наручи", gloves: "Перчатки", legs: "Поножи", boots: "Ботинки",
   earrings: "Серьги", amulet: "Амулет", ring: "Кольцо", weapon: "Оружие", offhand: "Щит / вторая рука", belt: "Пояс",
 };
 export const SLOTS: { id: SlotId; label: string; kind: ItemSlotKind }[] = [
   { id: "helmet", label: "Шлем", kind: "helmet" },
+  { id: "cloak", label: "Плащ", kind: "cloak" },
   { id: "chest", label: "Нагрудник", kind: "chest" },
   { id: "bracers", label: "Наручи", kind: "bracers" },
   { id: "gloves", label: "Перчатки", kind: "gloves" },
@@ -195,6 +213,7 @@ export function normalizeInventory(raw: any): Inventory {
         beltCapacity: i.beltCapacity ? clampBelt(Number(i.beltCapacity)) : undefined,
         quantity: Math.max(1, Math.trunc(Number(i.quantity)) || 1),
         description: String(i.description ?? ""),
+        ...normalizeItemExtras(i),
       }));
   }
   const ids = new Set(inv.items.map((i) => i.id));
@@ -210,4 +229,44 @@ export function normalizeInventory(raw: any): Inventory {
     inv.belt = Array.from({ length: cap }, (_, i) => ref(Array.isArray(raw.belt) ? raw.belt[i] : null));
   }
   return inv;
+}
+
+
+/** Adds a new item; identical consumables merge into one stack, equipment always stays separate. */
+export function addItem(inv: Inventory, item: Item): { inventory: Inventory; mergedInto: string | null } {
+  const key = stackKey(item);
+  const same = key ? inv.items.find((i) => stackKey(i) === key) : undefined;
+  if (same) {
+    const next = copy(inv);
+    next.items = next.items.map((i) => (i.id === same.id ? withHistory({ ...i, quantity: i.quantity + Math.max(1, item.quantity) }, `Добавлено ${item.quantity} шт.`) : i));
+    return { inventory: next, mergedInto: same.id };
+  }
+  return { inventory: upsertItem(inv, withHistory({ ...item, createdAt: item.createdAt ?? new Date().toISOString() }, "Создан")), mergedInto: null };
+}
+
+/** Independent copy with a new id (never merges, so the copy is a separate instance). */
+export function duplicateItem(inv: Inventory, itemId: string, newId: string): Inventory {
+  const src = findItem(inv, itemId);
+  if (!src) return inv;
+  return upsertItem(inv, withHistory({ ...src, id: newId, name: `${src.name} (копия)`, history: [] }, `Скопирован из «${src.name}»`));
+}
+
+/** Equip into the first fitting free slot (consumables go to the first free belt cell). */
+export function autoEquip(inv: Inventory, itemId: string): Result {
+  const i = findItem(inv, itemId);
+  if (!i) return { inventory: inv, error: "Предмет не найден" };
+  if (i.category === "consumable") {
+    const free = inv.belt.findIndex((b) => b === null);
+    if (free < 0) return { inventory: inv, error: inv.belt.length ? "На поясе нет свободных ячеек" : "Сначала наденьте пояс" };
+    return putOnBelt(inv, i.id, free);
+  }
+  if (i.slot === "weapon" || i.slot === "offhand") {
+    const set = inv.activeSet;
+    const hand: Hand = i.slot === "offhand" ? "off" : inv.weaponSets[set].main ? "off" : "main";
+    return equipHand(inv, i.id, set, hand);
+  }
+  const fitting = SLOTS.filter((s) => s.kind === i.slot);
+  const slot = fitting.find((s) => !inv.equipped[s.id]) ?? fitting[0];
+  if (!slot) return { inventory: inv, error: "Этот предмет нельзя надеть" };
+  return equipSlot(inv, i.id, slot.id);
 }
