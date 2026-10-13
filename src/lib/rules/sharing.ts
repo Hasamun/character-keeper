@@ -10,6 +10,7 @@ export function normalizePermissions(raw: unknown): Permissions {
   return Object.fromEntries(SHARE_SECTIONS.map(k => [k, r[k] === 'edit' && k !== 'history' ? 'edit' : r[k] === 'read' || r[k] === 'edit' && k === 'history' ? 'read' : 'none'])) as Permissions;
 }
 export const hasPermission = (p: Permissions, section: ShareSection, edit = false) => edit ? p[section] === 'edit' : p[section] !== 'none';
+export const ownsImagePath = (path: string, ownerId: string) => path.startsWith(`${ownerId}/`) && !path.includes('..');
 export const canDeriveShared = (p: Permissions) => ['bio', 'primary', 'secondary', 'inventory'].every(k => p[k as ShareSection] !== 'none');
 export function canShareAction(p: Permissions, action: 'primaryExp' | 'secondaryExp' | 'inventory' | 'use' | 'notes' | 'bio') {
   if (action === 'secondaryExp') return p.primary === 'edit' && p.secondary === 'edit';

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { normalizePermissions, projectShared, canShareAction, type Permissions } from './rules/sharing';
+import { normalizePermissions, projectShared, canShareAction, ownsImagePath, type Permissions } from './rules/sharing';
 import { normalizeCharacter } from './storage';
 import { addPrimaryExp, addSecondaryExp, uid, type Character } from './rules';
 import { activateEquipmentEffect, endEffect, reconcileEffects, useItem } from './rules/derived';
@@ -110,8 +110,8 @@ export const sharedAction = createServerFn({ method: 'POST' }).middleware([requi
       const path = normalized[field];
       if (!path) continue;
       const existing = c.inventory.items.some(i => i.image === path || i.thumb === path);
-      if (existing && path.startsWith(`${a.ownerId}/`)) continue;
-      if (!path.startsWith(`${context.userId}/`) || path.includes('..')) throw new Error('Изображение недоступно');
+      if (existing && ownsImagePath(path, a.ownerId)) continue;
+      if (!ownsImagePath(path, context.userId)) throw new Error('Изображение недоступно');
       const download = await context.supabase.storage.from('item-images').download(path);
       if (download.error || !download.data) throw new Error('Изображение недоступно');
       if (context.userId === a.ownerId) continue;
@@ -145,7 +145,7 @@ export const saveOwnedCharacter = createServerFn({method:'POST'}).middleware([re
   const c=reconcileEffects(normalizeCharacter(data.character));c.updatedAt=new Date().toISOString();
   for (const item of c.inventory.items) {
     for (const path of [item.image, item.thumb]) {
-      if (path && (!path.startsWith(`${context.userId}/`) || path.includes('..'))) throw new Error('Изображение недоступно: используйте собственный файл');
+      if (path && !ownsImagePath(path, context.userId)) throw new Error('Изображение недоступно: используйте собственный файл');
     }
   }
   const row={id:c.id,owner_id:context.userId,name:c.name,data:json(c),updated_at:c.updatedAt};
