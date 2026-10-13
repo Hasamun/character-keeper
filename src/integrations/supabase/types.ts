@@ -136,6 +136,100 @@ export type Database = {
           },
         ]
       }
+      character_invites: {
+        Row: {
+          character_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          owner_id: string
+          permissions: Json
+          recipient_id: string | null
+          status: string
+          token_hash: string | null
+        }
+        Insert: {
+          character_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          owner_id: string
+          permissions: Json
+          recipient_id?: string | null
+          status?: string
+          token_hash?: string | null
+        }
+        Update: {
+          character_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          owner_id?: string
+          permissions?: Json
+          recipient_id?: string | null
+          status?: string
+          token_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_invites_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_invites_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_invites_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_members: {
+        Row: {
+          character_id: string
+          created_at: string
+          permissions: Json
+          user_id: string
+        }
+        Insert: {
+          character_id: string
+          created_at?: string
+          permissions: Json
+          user_id: string
+        }
+        Update: {
+          character_id?: string
+          created_at?: string
+          permissions?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_members_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       characters: {
         Row: {
           created_at: string
@@ -212,12 +306,39 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
+      character_invitation: {
+        Args: { _action?: string; _id?: string; _token?: string }
+        Returns: Json
+      }
+      character_permission: { Args: { _id: string }; Returns: Json }
+      commit_character_section: {
+        Args: {
+          _actor: string
+          _data: Json
+          _expected: string
+          _id: string
+          _log: string
+          _sections: string[]
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      manage_character_access: {
+        Args: {
+          _action: string
+          _email?: string
+          _id: string
+          _permissions?: Json
+          _target?: string
+          _token?: string
+        }
+        Returns: string
       }
       review_catalog: {
         Args: {
@@ -232,10 +353,12 @@ export type Database = {
         Args: { _blocked: boolean; _id: string; _reason: string }
         Returns: undefined
       }
+      shared_item_image_access: { Args: { _path: string }; Returns: boolean }
       submit_catalog: {
         Args: { _catalog_id?: string; _data: Json; _submission_id?: string }
         Returns: string
       }
+      valid_character_permissions: { Args: { p: Json }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
