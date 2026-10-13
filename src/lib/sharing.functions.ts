@@ -7,10 +7,12 @@ import { addPrimaryExp, addSecondaryExp, uid, type Character } from './rules';
 import { activateEquipmentEffect, endEffect, reconcileEffects, useItem } from './rules/derived';
 import { addItem, autoEquip, removeItem, unequip, upsertItem, swapWeapons, setMoney, type Item, type Money } from './rules/inventory';
 import type { Json } from '@/integrations/supabase/types';
+import type { Database } from '@/integrations/supabase/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 const json = (v: unknown): Json => JSON.parse(JSON.stringify(v));
 const idSchema = z.object({ id: z.string().min(1).max(128) });
-async function permission(db: Parameters<typeof requireSupabaseAuth.server>[0] extends never ? never : any, id: string) {
+async function permission(db: SupabaseClient<Database>, id: string) {
   const r = await db.rpc('character_permission', { _id: id });
   if (r.error || !r.data) throw new Error('Персонаж недоступен');
   return r.data as { owner: boolean; ownerId: string; ownerName: string; permissions: Permissions };
@@ -113,7 +115,19 @@ export const sharedAction = createServerFn({ method: 'POST' }).middleware([requi
   }
   c=reconcileEffects(c);
   const sections=action==='secondaryExp'?['primary','secondary']:[section];
-  const saved=await supabaseAdmin.rpc('commit_character_section',{_id:data.id,_actor:context.userId,_expected:data.version,_data:json(c),_sections:sections,_log:`${context.claims['email'] ? 'Участник' : 'Участник'}: ${log}`});
+  const profile=await context.supabase.from('profiles').select('display_name').eq('id',context.userId).single();
+  const saved=await supabaseAdmin.rpc('commit_character_section',{_id:data.id,_actor:context.userId,_expected:data.version,_data:json(c),_sections:sections,_log:`${profile.data?.display_name || 'Участник'}: ${log}`});
   if(saved.error)throw new Error(saved.error.message.includes('CONFLICT')?'Персонаж изменился. Обновите данные и повторите действие':'Не удалось сохранить: доступ изменён');
   return {ok:true};
+});
+
+export const saveOwnedCharacter = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(v=>z.object({character:z.unknown(),version:z.string().nullable()}).parse(v)).handler(async({data,context})=>{
+  const active=await context.supabase.rpc('account_active');if(active.error||!active.data)throw new Error('Доступ закрыт');
+  const c=reconcileEffects(normalizeCharacter(data.character));c.updatedAt=new Date().toISOString();
+  const row={id:c.id,owner_id:context.userId,name:c.name,data:json(c),updated_at:c.updatedAt};
+  const r=data.version
+    ? await context.supabase.from('characters').update({name:row.name,data:row.data,updated_at:row.updated_at}).eq('id',c.id).eq('owner_id',context.userId).eq('updated_at',data.version).select('data,updated_at').maybeSingle()
+    : await context.supabase.from('characters').insert(row).select('data,updated_at').single();
+  if(r.error||!r.data)throw new Error('Персонаж изменился или доступ закрыт. Обновите данные и повторите сохранение');
+  return {character:normalizeCharacter(r.data.data),version:r.data.updated_at};
 });
