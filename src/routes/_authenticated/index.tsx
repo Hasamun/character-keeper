@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef } from "react";
 import { Plus, Shield, Trash2, Upload } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -10,8 +8,7 @@ import {
 import { HeroAvatar } from "@/components/Avatar";
 import { SharedHome } from '@/components/CharacterAccess';
 import { useCharacters } from "@/lib/characters-store";
-import { getArmorClass, getCharacterLevel, uid } from "@/lib/rules";
-import { normalizeCharacter } from "@/lib/storage";
+import { getArmorClass, getCharacterLevel } from "@/lib/rules";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -28,21 +25,7 @@ export const Route = createFileRoute("/_authenticated/")({
 });
 
 function Index() {
-  const { ready, characters, remove, upsert } = useCharacters();
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const onImport = async (file?: File) => {
-    if (!file) return;
-    try {
-      const c = normalizeCharacter(JSON.parse(await file.text()));
-      if (characters.some((x) => x.id === c.id)) c.id = uid();
-      upsert(c);
-      toast.success(`Персонаж «${c.name}» импортирован`);
-    } catch {
-      toast.error("Не удалось прочитать файл");
-    }
-    if (fileRef.current) fileRef.current.value = "";
-  };
+  const { ready, characters, remove } = useCharacters();
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
@@ -55,10 +38,9 @@ function Index() {
         <Button variant="gold" size="lg" asChild>
           <Link to="/new"><Plus /> Создать персонажа</Link>
         </Button>
-        <Button variant="outline" size="lg" onClick={() => fileRef.current?.click()}>
-          <Upload /> Импорт
+        <Button variant="outline" size="lg" asChild>
+          <Link to="/transfer"><Upload /> Перенос и копии</Link>
         </Button>
-        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onImport(e.target.files?.[0])} />
       </div>
 
       {ready && characters.length === 0 && (

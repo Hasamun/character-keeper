@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedNewRouteImport } from './routes/_authenticated/new'
+import { Route as AuthenticatedTransferRouteImport } from './routes/_authenticated/transfer'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminAccountsRouteImport } from './routes/_authenticated/admin.accounts'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
@@ -49,6 +50,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedNewRoute = AuthenticatedNewRouteImport.update({
   id: '/new',
   path: '/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTransferRoute = AuthenticatedTransferRouteImport.update({
+  id: '/transfer',
+  path: '/transfer',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/new': typeof AuthenticatedNewRoute
+  '/transfer': typeof AuthenticatedTransferRoute
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/new': typeof AuthenticatedNewRoute
+  '/transfer': typeof AuthenticatedTransferRoute
   '/': typeof AuthenticatedIndexRoute
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/new': typeof AuthenticatedNewRoute
+  '/_authenticated/transfer': typeof AuthenticatedTransferRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/new'
+    | '/transfer'
     | '/admin/accounts'
     | '/admin/logs'
     | '/catalog/$catalogId'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/new'
+    | '/transfer'
     | '/'
     | '/admin/accounts'
     | '/admin/logs'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/new'
+    | '/_authenticated/transfer'
     | '/_authenticated/'
     | '/_authenticated/admin/accounts'
     | '/_authenticated/admin/logs'
@@ -276,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof AuthenticatedNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/transfer': {
+      id: '/_authenticated/transfer'
+      path: '/transfer'
+      fullPath: '/transfer'
+      preLoaderRoute: typeof AuthenticatedTransferRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/': {
@@ -367,6 +386,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedNewRoute: typeof AuthenticatedNewRoute
+  AuthenticatedTransferRoute: typeof AuthenticatedTransferRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
@@ -384,6 +404,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNewRoute: AuthenticatedNewRoute,
+  AuthenticatedTransferRoute: AuthenticatedTransferRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAccountsRoute: AuthenticatedAdminAccountsRoute,
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
