@@ -7,10 +7,10 @@
 
 ## Subsequent approved stages (not part of Step 3)
 - [x] Step 4: shared catalog (search, filters, sort, paging, lazy images, image storage + thumbnails), moderation workflow, admin area, logs
-- [ ] Step 5: sharing characters with per-section rights, invites by account and link
+- [ ] Step 5: sharing characters with per-section rights, invites by account and link (approved; implementing)
 - [ ] Step 6: import/export (JSON, CSV, images, ZIP) with preview and duplicate handling, manual backup, final polish and checks
 
 ## Verification follow-up
-- [ ] Step 4 access matrix: ordinary-user administrative denial, blocked live session and restoration, concurrent moderation (needs an authorized non-admin test account/session; only the admin session was available).
+- [ ] Step 4 access matrix: RPC checks passed with authorized temporary non-admin account (administrative denial, same-session blocking/restoration, exactly one concurrent decision); live-screen blocking/restoration still to verify.
 
 Verified Step 4: 55 tests; signed-in proposal creation with image, approval, catalog image rendering, copy persisted after reload, archive and audit, accounts page, mobile no overflow. Temporary heroes and catalog rows removed.
