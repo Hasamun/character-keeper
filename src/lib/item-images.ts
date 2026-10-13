@@ -37,7 +37,7 @@ export async function uploadItemImage(itemId: string, file: File): Promise<{ ima
   const a = await supabase.storage.from(BUCKET).upload(`${base}.${ext}`, file, { contentType: file.type });
   if (a.error) throw new Error("Не удалось загрузить картинку");
   const b = await supabase.storage.from(BUCKET).upload(`${base}-thumb.webp`, thumb, { contentType: "image/webp" });
-  if (b.error) throw new Error("Не удалось загрузить картинку");
+  if (b.error) { await supabase.storage.from(BUCKET).remove([`${base}.${ext}`]); throw new Error("Не удалось загрузить картинку"); }
   return { image: `${base}.${ext}`, thumb: `${base}-thumb.webp` };
 }
 

@@ -9,6 +9,9 @@
 - [x] Step 4: shared catalog (search, filters, sort, paging, lazy images, image storage + thumbnails), moderation workflow, admin area, logs
 - [x] Step 5: sharing characters with per-section rights, invites by account and one-use seven-day link, owner-only management, filtered reads, atomic writes, shared private images
 - [ ] Step 6: import/export (JSON, CSV, images, ZIP) with preview and duplicate handling, manual backup, final polish and checks
+  - [ ] Implement transfer validation, files, images, and protected save
+  - [ ] Add transfer UI and exports
+  - [ ] Verify round trips, access boundaries, failure cleanup, and downloads
 
 ## Verification follow-up
 - [x] Step 4 access matrix: ordinary-account administrative denial, same-session RPC and live-screen blocking/restoration, exactly one concurrent moderation decision verified.

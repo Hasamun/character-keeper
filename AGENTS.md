@@ -25,3 +25,4 @@
 - CharactersProvider polls account access and hides protected content on blocking; restrictive database/storage policies remain the authority — already open sessions cannot bypass blocking.
 - Character sharing uses section-filtered server DTOs and permission-checked atomic commits against `updated_at`; owner saves also compare versions — keeps one character store without leaking closed sections or silently overwriting concurrent edits.
 - Membership, invitations and shared commits lock the character before invitation rows; one-use invite tokens are hashed and never returned from storage — serializes acceptance, revocation and rights changes safely.
+- Transfer validation and reference remapping live in pure rules; archives contain character/item data and owned images only, and imports use owner-scoped version-checked writes — keeps portable copies from bypassing sharing or moderation.
