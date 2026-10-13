@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/character/$id/")({
     ],
   }),
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } =>
-    typeof s.tab === "string" && ["main", "stats", "skills", "inventory", "history"].includes(s.tab) ? { tab: s.tab as Tab } : {},
+    typeof s['tab'] === "string" && ["main", "stats", "skills", "inventory", "history"].includes(s['tab']) ? { tab: s['tab'] as Tab } : {},
   component: CharacterPage,
 });
 
