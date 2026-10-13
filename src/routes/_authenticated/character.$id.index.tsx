@@ -273,6 +273,7 @@ function NotesTab({ c, save }: { c: Character; save: (c: Character) => void }) {
   };
   return (
     <div className="grid gap-4">
+      <h2 className="flex items-center gap-2 text-lg"><NotebookPen className="h-5 w-5 text-primary" /> Заметки</h2>
       <div className="panel grid gap-3 p-4">
         <Input placeholder="Тема заметки" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
         <Textarea rows={3} placeholder="Текст заметки…" value={text} onChange={(e) => setText(e.target.value)} />
