@@ -137,7 +137,7 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
         </section>
       )}
 
-      <Button asChild variant="outline" className="justify-self-start"><Link to="/catalog" search={{}}>Общий каталог</Link></Button>
+      <Button asChild variant="outline" className="justify-self-start"><Link to="/catalog" search={{q:"",category:"all",rank:"all",slot:"all",subtype:"",sort:"recent",page:1,view:"grid"}}>Общий каталог</Link></Button>
       {/* Bag */}
       <section className="panel p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

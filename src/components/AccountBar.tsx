@@ -20,8 +20,8 @@ export function AccountBar({ email }: { email: string }) {
   };
   return (
     <div className="mx-auto flex max-w-5xl items-center justify-end gap-2 px-4 pt-3 text-xs text-muted-foreground">
-      {access?.active && <Button variant="ghost" size="sm" asChild><Link to="/catalog" search={{}}>Каталог</Link></Button>}
-      {access?.active && access.admin && <Button variant="ghost" size="sm" asChild><Link to="/admin" search={{}}>Админ</Link></Button>}
+      {access?.active && <Button variant="ghost" size="sm" asChild><Link to="/catalog" search={{q:"",category:"all",rank:"all",slot:"all",subtype:"",sort:"recent",page:1,view:"grid"}}>Каталог</Link></Button>}
+      {access?.active && access.admin && <Button variant="ghost" size="sm" asChild><Link to="/admin" search={{page:1}}>Админ</Link></Button>}
       <span className="truncate">{email}</span>
       <Button variant="ghost" size="sm" onClick={signOut}><LogOut /> Выйти</Button>
     </div>
