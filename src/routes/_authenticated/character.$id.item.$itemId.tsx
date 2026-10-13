@@ -8,6 +8,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { CatalogProposalEditor } from "@/components/CatalogProposalEditor";
+import { catalogTemplate } from "@/lib/rules/catalog";
 import { ItemUseActions } from "@/components/ItemUseDialog";
 import { ItemComparison } from "@/components/ItemComparison";
 import { ItemEditor } from "@/components/ItemEditor";
@@ -51,6 +53,7 @@ function ItemPage() {
   const { id, itemId } = Route.useParams();
   const { ready, get, upsert } = useCharacters();
   const navigate = useNavigate();
+  const [proposal, setProposal] = useState<Item | null>(null);
   const [comparing, setComparing] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -99,6 +102,7 @@ function ItemPage() {
                 if (res.error) toast.error(res.error); else commit(res.inventory, res.log);
               }}>{item.category === "consumable" ? "На пояс" : "Надеть"}</Button>
             )}
+            <Button variant="outline" size="sm" onClick={() => setProposal(catalogTemplate(item))}>Предложить в каталог</Button>
             <Button variant="outline" size="sm" onClick={() => setComparing(true)}>Сравнить</Button>
             <Button variant="outline" size="sm" onClick={() => setEditing(item)}><Pencil /> Изменить</Button>
             <Button variant="outline" size="sm" onClick={() => {
@@ -186,6 +190,7 @@ function ItemPage() {
         ) : <p className="text-sm text-muted-foreground">Пока пусто.</p>}
       </Section>
 
+      <CatalogProposalEditor item={proposal} onClose={() => setProposal(null)} />
       <ItemEditor item={editing} onClose={() => setEditing(null)} onSave={(n) => {
         commit(upsertItem(c.inventory, withHistory(n, "Изменён")), `Изменён предмет «${n.name}»`);
         setEditing(null);

@@ -39,6 +39,8 @@ export async function uploadItemImage(itemId: string, file: File): Promise<{ ima
   return { image: `${base}.${ext}`, thumb: `${base}-thumb.webp` };
 }
 
+export function clearItemImageCache() { cache.clear(); }
+
 const cache = new Map<string, { url: string; exp: number }>();
 
 /** Signed URL for a private image path (cached ~50 minutes). */
@@ -50,9 +52,12 @@ export function useItemImage(path: string | undefined) {
     const c = cache.get(path);
     if (c && c.exp > Date.now()) { setUrl(c.url); return; }
     let alive = true;
-    void supabase.storage.from(BUCKET).createSignedUrl(path, 3600).then(({ data }) => {
+    setUrl(null);
+    const bucket = path.startsWith("catalog:") ? "catalog-images" : BUCKET;
+    const storagePath = path.startsWith("catalog:") ? path.slice(8) : path;
+    void supabase.storage.from(bucket).createSignedUrl(storagePath, 60).then(({ data }) => {
       if (!alive || !data) return;
-      cache.set(path, { url: data.signedUrl, exp: Date.now() + 50 * 60_000 });
+      cache.set(path, { url: data.signedUrl, exp: Date.now() + 45_000 });
       setUrl(data.signedUrl);
     });
     return () => { alive = false; };

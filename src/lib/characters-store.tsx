@@ -1,4 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { accountQuery } from "./catalog-queries";
+import { clearItemImageCache } from "./item-images";
+import { Button } from "@/components/ui/button";
+import { AccountBar } from "@/components/AccountBar";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -14,7 +19,7 @@ interface Store {
   ready: boolean;
   characters: Character[];
   get: (id: string) => Character | undefined;
-  upsert: (c: Character) => void;
+  upsert: (c: Character) => Promise<void>;
   remove: (id: string) => void;
 }
 const Ctx = createContext<Store | null>(null);
@@ -24,6 +29,8 @@ const toRow = (c: Character, ownerId: string) => ({
 });
 
 export function CharactersProvider({ userId, children }: { userId: string; children: ReactNode }) {
+  const access = useQuery({ ...accountQuery(), refetchInterval: 15000, refetchIntervalInBackground: true });
+  const allowed = access.data?.active === true;
   const [characters, setCharacters] = useState<Character[]>([]);
   const [ready, setReady] = useState(false);
   const [localHeroes, setLocalHeroes] = useState<Character[]>([]);
@@ -32,6 +39,7 @@ export function CharactersProvider({ userId, children }: { userId: string; child
   const queue = useRef<Map<string, Promise<unknown>>>(new Map());
 
   useEffect(() => {
+    if (!allowed) { setCharacters([]); setReady(false); clearItemImageCache(); return; }
     let alive = true;
     (async () => {
       const { data, error } = await supabase.from("characters").select("data").order("created_at");
@@ -42,15 +50,16 @@ export function CharactersProvider({ userId, children }: { userId: string; child
       setLocalHeroes(loadAll());
     })();
     return () => { alive = false; };
-  }, [userId]);
+  }, [userId, allowed]);
 
   const persist = useCallback((c: Character) => {
-    const prev = queue.current.get(c.id) ?? Promise.resolve();
+    const prev = (queue.current.get(c.id) ?? Promise.resolve()).catch(() => undefined);
     const next = prev.then(async () => {
       const { error } = await supabase.from("characters").upsert(toRow(c, userId));
-      if (error) toast.error("Не удалось сохранить изменения");
+      if (error) { toast.error("Не удалось сохранить изменения"); throw new Error("Не удалось сохранить изменения"); }
     });
     queue.current.set(c.id, next);
+    return next;
   }, [userId]);
 
   const migrate = async () => {
@@ -73,13 +82,19 @@ export function CharactersProvider({ userId, children }: { userId: string; child
     upsert: (c) => {
       const u = { ...reconcileEffects(c), updatedAt: new Date().toISOString() };
       setCharacters((l) => (l.some((x) => x.id === c.id) ? l.map((x) => (x.id === c.id ? u : x)) : [...l, u]));
-      persist(u);
+      if (!allowed) return Promise.resolve();
+      const write = persist(u);
+      void write.catch(() => undefined);
+      return write;
     },
     remove: (id) => {
+      if (!allowed) return;
       setCharacters((l) => l.filter((x) => x.id !== id));
       void supabase.from("characters").delete().eq("id", id).then(({ error }) => { if (error) toast.error("Не удалось удалить"); });
     },
   };
+
+  if (!allowed) return <div className="mx-auto max-w-lg p-6"><AccountBar email="" /><h1 className="mt-8 text-2xl text-gold">{access.data?.active === false ? "Аккаунт заблокирован" : "Проверяем доступ"}</h1><p className="my-4 text-muted-foreground">{access.data?.active === false ? "Доступ к персонажам и каталогу закрыт. Данные сохранены." : access.error ? "Не удалось проверить доступ." : ""}</p>{access.error && <Button variant="outline" onClick={() => access.refetch()}>Повторить</Button>}</div>;
 
   return (
     <Ctx.Provider value={value}>

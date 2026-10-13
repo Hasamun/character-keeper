@@ -14,6 +14,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedNewRouteImport } from './routes/_authenticated/new'
+import { Route as AuthenticatedCatalogIndexRouteImport } from './routes/_authenticated/catalog.index'
+import { Route as AuthenticatedCatalogCatalogIdRouteImport } from './routes/_authenticated/catalog.$catalogId'
+import { Route as AuthenticatedCatalogProposalsRouteImport } from './routes/_authenticated/catalog.proposals'
 import { Route as AuthenticatedCharacterIdIndexRouteImport } from './routes/_authenticated/character.$id.index'
 import { Route as AuthenticatedCharacterIdEditRouteImport } from './routes/_authenticated/character.$id.edit'
 import { Route as AuthenticatedCharacterIdItemItemIdRouteImport } from './routes/_authenticated/character.$id.item.$itemId'
@@ -42,6 +45,24 @@ const AuthenticatedNewRoute = AuthenticatedNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCatalogIndexRoute =
+  AuthenticatedCatalogIndexRouteImport.update({
+    id: '/catalog/',
+    path: '/catalog/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCatalogCatalogIdRoute =
+  AuthenticatedCatalogCatalogIdRouteImport.update({
+    id: '/catalog/$catalogId',
+    path: '/catalog/$catalogId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCatalogProposalsRoute =
+  AuthenticatedCatalogProposalsRouteImport.update({
+    id: '/catalog/proposals',
+    path: '/catalog/proposals',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCharacterIdIndexRoute =
   AuthenticatedCharacterIdIndexRouteImport.update({
     id: '/character/$id/',
@@ -66,6 +87,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/new': typeof AuthenticatedNewRoute
+  '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
+  '/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/catalog/': typeof AuthenticatedCatalogIndexRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
   '/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -75,6 +99,9 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/new': typeof AuthenticatedNewRoute
   '/': typeof AuthenticatedIndexRoute
+  '/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
+  '/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/catalog': typeof AuthenticatedCatalogIndexRoute
   '/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/character/$id': typeof AuthenticatedCharacterIdIndexRoute
   '/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -86,6 +113,9 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/new': typeof AuthenticatedNewRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/catalog/$catalogId': typeof AuthenticatedCatalogCatalogIdRoute
+  '/_authenticated/catalog/proposals': typeof AuthenticatedCatalogProposalsRoute
+  '/_authenticated/catalog/': typeof AuthenticatedCatalogIndexRoute
   '/_authenticated/character/$id/edit': typeof AuthenticatedCharacterIdEditRoute
   '/_authenticated/character/$id/': typeof AuthenticatedCharacterIdIndexRoute
   '/_authenticated/character/$id/item/$itemId': typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -97,6 +127,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/new'
+    | '/catalog/$catalogId'
+    | '/catalog/proposals'
+    | '/catalog/'
     | '/character/$id/edit'
     | '/character/$id/'
     | '/character/$id/item/$itemId'
@@ -106,6 +139,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/new'
     | '/'
+    | '/catalog/$catalogId'
+    | '/catalog/proposals'
+    | '/catalog'
     | '/character/$id/edit'
     | '/character/$id'
     | '/character/$id/item/$itemId'
@@ -116,6 +152,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/new'
     | '/_authenticated/'
+    | '/_authenticated/catalog/$catalogId'
+    | '/_authenticated/catalog/proposals'
+    | '/_authenticated/catalog/'
     | '/_authenticated/character/$id/edit'
     | '/_authenticated/character/$id/'
     | '/_authenticated/character/$id/item/$itemId'
@@ -164,6 +203,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/catalog/': {
+      id: '/_authenticated/catalog/'
+      path: '/catalog'
+      fullPath: '/catalog/'
+      preLoaderRoute: typeof AuthenticatedCatalogIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/catalog/$catalogId': {
+      id: '/_authenticated/catalog/$catalogId'
+      path: '/catalog/$catalogId'
+      fullPath: '/catalog/$catalogId'
+      preLoaderRoute: typeof AuthenticatedCatalogCatalogIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/catalog/proposals': {
+      id: '/_authenticated/catalog/proposals'
+      path: '/catalog/proposals'
+      fullPath: '/catalog/proposals'
+      preLoaderRoute: typeof AuthenticatedCatalogProposalsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/character/$id/': {
       id: '/_authenticated/character/$id/'
       path: '/character/$id'
@@ -191,6 +251,9 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedNewRoute: typeof AuthenticatedNewRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedCatalogCatalogIdRoute: typeof AuthenticatedCatalogCatalogIdRoute
+  AuthenticatedCatalogProposalsRoute: typeof AuthenticatedCatalogProposalsRoute
+  AuthenticatedCatalogIndexRoute: typeof AuthenticatedCatalogIndexRoute
   AuthenticatedCharacterIdEditRoute: typeof AuthenticatedCharacterIdEditRoute
   AuthenticatedCharacterIdIndexRoute: typeof AuthenticatedCharacterIdIndexRoute
   AuthenticatedCharacterIdItemItemIdRoute: typeof AuthenticatedCharacterIdItemItemIdRoute
@@ -199,6 +262,9 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNewRoute: AuthenticatedNewRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedCatalogCatalogIdRoute: AuthenticatedCatalogCatalogIdRoute,
+  AuthenticatedCatalogProposalsRoute: AuthenticatedCatalogProposalsRoute,
+  AuthenticatedCatalogIndexRoute: AuthenticatedCatalogIndexRoute,
   AuthenticatedCharacterIdEditRoute: AuthenticatedCharacterIdEditRoute,
   AuthenticatedCharacterIdIndexRoute: AuthenticatedCharacterIdIndexRoute,
   AuthenticatedCharacterIdItemItemIdRoute:
