@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeftRight, Coins, LayoutGrid, List, Minus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -137,6 +137,7 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
         </section>
       )}
 
+      <Button asChild variant="outline" className="justify-self-start"><Link to="/catalog" search={{q:"",category:"all",rank:"all",slot:"all",subtype:"",sort:"recent",page:1,view:"grid"}}>Общий каталог</Link></Button>
       {/* Bag */}
       <section className="panel p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

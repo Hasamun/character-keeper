@@ -22,6 +22,27 @@
       "when": 1791916638795,
       "tag": "0002_item_images_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791918315710,
+      "tag": "0003_catalog_moderation_and_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791918368993,
+      "tag": "0004_catalog_sort_and_image_validation",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791918689295,
+      "tag": "0005_catalog_access_hardening",
+      "breakpoints": true
     }
   ]
 }
