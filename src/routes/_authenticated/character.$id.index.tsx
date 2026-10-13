@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  ArrowLeft, Backpack, Download, Heart, Home, ScrollText, History, MoreVertical, NotebookPen, Pencil, Shield, Swords, Trash2,
+  ArrowLeft, Backpack, Download, Heart, Home, ScrollText, History, MoreVertical, NotebookPen, Pencil, Shield, Swords, Trash2, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,7 @@ function CharacterPage() {
             <Button variant="ghost" size="icon" aria-label="Меню"><MoreVertical /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate({to:'/character/$id/access',params:{id}})}><Users/> Доступ</DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate({ to: "/character/$id/edit", params: { id } })}><Pencil /> Редактировать</DropdownMenuItem>
             <DropdownMenuItem onClick={() => exportCharacter(c)}><Download /> Экспорт JSON</DropdownMenuItem>
             <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDelete(true)}><Trash2 /> Удалить</DropdownMenuItem>

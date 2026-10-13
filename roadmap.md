@@ -7,10 +7,12 @@
 
 ## Subsequent approved stages (not part of Step 3)
 - [x] Step 4: shared catalog (search, filters, sort, paging, lazy images, image storage + thumbnails), moderation workflow, admin area, logs
-- [ ] Step 5: sharing characters with per-section rights, invites by account and link
+- [x] Step 5: sharing characters with per-section rights, invites by account and one-use seven-day link, owner-only management, filtered reads, atomic writes, shared private images
 - [ ] Step 6: import/export (JSON, CSV, images, ZIP) with preview and duplicate handling, manual backup, final polish and checks
 
 ## Verification follow-up
-- [ ] Step 4 access matrix: ordinary-user administrative denial, blocked live session and restoration, concurrent moderation (needs an authorized non-admin test account/session; only the admin session was available).
+- [x] Step 4 access matrix: ordinary-account administrative denial, same-session RPC and live-screen blocking/restoration, exactly one concurrent moderation decision verified.
 
 Verified Step 4: 55 tests; signed-in proposal creation with image, approval, catalog image rendering, copy persisted after reload, archive and audit, accounts page, mobile no overflow. Temporary heroes and catalog rows removed.
+
+Verified Step 5: 67 tests; two-session invitation acceptance, hidden sections, shared note persistence and owner readback, live revocation, one-use/expired/cancelled link denial, direct full-JSON/deletion/owner-change/permission-write denial, read-only write denial, concurrent-write conflict, UI conflict retaining title/text, shared experience and consumable persistence, participant image upload copied to owner and rendered after reload, unrelated/injected image denial and new-URL denial after revocation, mobile no horizontal overflow. Temporary hero, account, sharing rows and uploaded test images removed. Preview build OK. Extended import/export and backups remain the next separately scoped stage; MCP remains separate.
