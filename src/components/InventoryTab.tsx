@@ -1,18 +1,19 @@
 import { useState } from "react";
-import { ArrowLeftRight, Check, Coins, Minus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { AlertTriangle, ArrowLeftRight, Coins, LayoutGrid, List, Minus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { pushLog, uid, type Character } from "@/lib/rules";
+import { ItemCard, ItemRow } from "@/components/ItemCard";
+import { ItemEditor, blankItem } from "@/components/ItemEditor";
+import { pushLog, type Character } from "@/lib/rules";
+import { RANKS, equipmentWarnings, itemRank, type Rank } from "@/lib/rules/items";
 import {
-  CATEGORY_LABELS, HAND_LABELS, MAX_BELT, MIN_BELT, MONEY_LABELS, SLOTS, SLOT_KIND_LABELS,
-  canEquipHand, canEquipSlot, equipHand, equipSlot, findItem, isEquipped, putOnBelt, removeItem, setMoney,
-  swapWeapons, unequip, upsertItem,
-  type Hand, type Inventory, type Item, type ItemCategory, type ItemSlotKind, type Money, type SlotId,
+  CATEGORY_LABELS, HAND_LABELS, MONEY_LABELS, SLOTS, SLOT_KIND_LABELS,
+  addItem, canEquipHand, canEquipSlot, equipHand, equipSlot, findItem, isEquipped, putOnBelt, setMoney,
+  swapWeapons, unequip,
+  type Hand, type Inventory, type Item, type ItemCategory, type Money, type SlotId,
 } from "@/lib/rules/inventory";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,10 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
   const [filter, setFilter] = useState<ItemCategory | "all">("all");
   const [editing, setEditing] = useState<Item | null>(null);
   const [picking, setPicking] = useState<Target | null>(null);
+  const [query, setQuery] = useState("");
+  const [rank, setRank] = useState<Rank | "all">("all");
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const navigate = useNavigate();
 
   const commit = (inventory: Inventory, log?: string) => {
     const next = { ...c, inventory, log: [...c.log] };
@@ -55,7 +60,12 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
     if (run(r)) setPicking(null);
   };
 
-  const shown = inv.items.filter((i) => filter === "all" || i.category === filter);
+  const q = query.trim().toLowerCase();
+  const shown = inv.items.filter((i) =>
+    (filter === "all" || i.category === filter) && (rank === "all" || itemRank(i) === rank) &&
+    (!q || i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)));
+  const warnings = equipmentWarnings(c, inv);
+  const open = (itemId: string) => navigate({ to: "/character/$id/item/$itemId", params: { id: c.id, itemId } });
 
   return (
     <div className="grid gap-5">
@@ -116,60 +126,43 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
         </div>
       </section>
 
+      {warnings.length > 0 && (
+        <section className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          <div className="mb-1 flex items-center gap-2 font-medium"><AlertTriangle className="h-4 w-4" /> Предупреждения</div>
+          <ul className="list-disc pl-5 text-muted-foreground">{warnings.map((w, k) => <li key={k}>{w.text}</li>)}</ul>
+        </section>
+      )}
+
       {/* Bag */}
       <section className="panel p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg">Предметы</h2>
-          <Button variant="gold" size="sm" onClick={() => setEditing({ id: uid(), name: "", category: "misc", quantity: 1, description: "" })}>
-            <Plus /> Добавить предмет
-          </Button>
+          <div className="flex gap-2">
+            <Button size="icon" variant={view === "grid" ? "secondary" : "ghost"} aria-label="Сетка" onClick={() => setView("grid")}><LayoutGrid /></Button>
+            <Button size="icon" variant={view === "list" ? "secondary" : "ghost"} aria-label="Список" onClick={() => setView("list")}><List /></Button>
+            <Button variant="gold" size="sm" onClick={() => setEditing(blankItem())}><Plus /> Добавить</Button>
+          </div>
         </div>
-        <div className="mb-3 flex flex-wrap gap-2">
+        <Input placeholder="Поиск по названию и описанию" value={query} onChange={(e) => setQuery(e.target.value)} className="mb-3" />
+        <div className="mb-2 flex flex-wrap gap-2">
           {(["all", "gear", "consumable", "misc"] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={cn("rounded-full border px-3 py-1 text-sm transition",
-                filter === f ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-              {f === "all" ? "Все" : CATEGORY_LABELS[f]}
-            </button>
+            <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>{f === "all" ? "Все" : CATEGORY_LABELS[f]}</Chip>
           ))}
         </div>
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <Chip active={rank === "all"} onClick={() => setRank("all")}>Любой ранг</Chip>
+          {RANKS.map((r) => <Chip key={r} active={rank === r} onClick={() => setRank(r)} className={`rank-${r}`}><span className="rank-text font-display">{r}</span></Chip>)}
+        </div>
         {shown.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Здесь пока пусто.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{inv.items.length ? "Ничего не найдено." : "Здесь пока пусто."}</p>
+        ) : view === "grid" ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {shown.map((i) => <ItemCard key={i.id} i={i} equipped={isEquipped(inv, i.id)} onClick={() => open(i.id)} />)}
+          </div>
         ) : (
-          <ul className="divide-y divide-border/60">
-            {shown.map((i) => {
-              const eq = isEquipped(inv, i.id);
-              return (
-                <li key={i.id} className="flex items-start gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{i.name}</span>
-                      {i.quantity > 1 && <span className="text-xs text-muted-foreground">×{i.quantity}</span>}
-                      {eq && <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] text-primary"><Check className="h-3 w-3" /> надето</span>}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {CATEGORY_LABELS[i.category]}
-                      {i.slot && ` · ${SLOT_KIND_LABELS[i.slot]}`}
-                      {i.slot === "belt" && ` · ${i.beltCapacity} яч.`}
-                    </div>
-                    {i.description && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{i.description}</p>}
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    {eq ? (
-                      <Button size="sm" variant="outline" onClick={() => run(unequip(inv, i.id))}>Снять</Button>
-                    ) : i.category !== "misc" && (i.category === "consumable" ? inv.belt.length > 0 : !!i.slot) ? (
-                      <Button size="sm" variant="outline" onClick={() => quickEquip(inv, i, run)}>
-                        {i.category === "consumable" ? "На пояс" : "Надеть"}
-                      </Button>
-                    ) : null}
-                    <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Изменить" onClick={() => setEditing(i)}><Pencil /></Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Удалить"
-                      onClick={() => commit(removeItem(inv, i.id), `Удалён предмет «${i.name}»`)}><Trash2 /></Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="grid gap-2">
+            {shown.map((i) => <ItemRow key={i.id} i={i} equipped={isEquipped(inv, i.id)} onClick={() => open(i.id)} />)}
+          </div>
         )}
       </section>
 
@@ -181,12 +174,12 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
         onPick={onPick}
         onRemove={(id) => { if (run(unequip(inv, id))) setPicking(null); }}
       />
-      <ItemDialog
+      <ItemEditor
         item={editing}
         onClose={() => setEditing(null)}
         onSave={(item) => {
-          const isNew = !findItem(inv, item.id);
-          commit(upsertItem(inv, item), isNew ? `Добавлен предмет «${item.name.trim() || "Без названия"}»` : undefined);
+          const r = addItem(inv, item);
+          commit(r.inventory, r.mergedInto ? `«${item.name}» ×${item.quantity} добавлено в стопку` : `Добавлен предмет «${item.name.trim()}»`);
           setEditing(null);
         }}
       />
@@ -194,23 +187,14 @@ export function InventoryTab({ c, save }: { c: Character; save: (c: Character) =
   );
 }
 
-/** Equip into the first fitting free slot (or the first fitting one). */
-function quickEquip(inv: Inventory, i: Item, run: (r: { inventory: Inventory; error: string | null; log?: string }) => boolean) {
-  if (i.category === "consumable") {
-    const free = inv.belt.findIndex((b) => b === null);
-    if (free < 0) { toast.error("На поясе нет свободных ячеек"); return; }
-    run(putOnBelt(inv, i.id, free));
-    return;
-  }
-  if (i.slot === "weapon" || i.slot === "offhand") {
-    const set = inv.activeSet;
-    const hand: Hand = i.slot === "offhand" ? "off" : inv.weaponSets[set].main ? "off" : "main";
-    run(equipHand(inv, i.id, set, hand));
-    return;
-  }
-  const fitting = SLOTS.filter((s) => s.kind === i.slot);
-  const slot = fitting.find((s) => !inv.equipped[s.id]) ?? fitting[0];
-  if (slot) run(equipSlot(inv, i.id, slot.id));
+function Chip({ active, onClick, children, className }: { active: boolean; onClick: () => void; children: React.ReactNode; className?: string }) {
+  return (
+    <button onClick={onClick}
+      className={cn("rounded-full border px-3 py-1 text-sm transition", className,
+        active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+      {children}
+    </button>
+  );
 }
 
 function MoneyField({ label, value, className, onChange }: { label: string; value: number; className: string; onChange: (v: number) => void }) {
@@ -273,74 +257,3 @@ function PickerDialog({ target, occupant, candidates, onClose, onPick, onRemove 
   );
 }
 
-function ItemDialog({ item, onClose, onSave }: { item: Item | null; onClose: () => void; onSave: (i: Item) => void }) {
-  return (
-    <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
-        {item && <ItemForm key={item.id} initial={item} onSave={onSave} />}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ItemForm({ initial, onSave }: { initial: Item; onSave: (i: Item) => void }) {
-  const [i, setI] = useState<Item>(initial);
-  const isNew = !initial.name;
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="font-display text-gold">{isNew ? "Новый предмет" : "Изменить предмет"}</DialogTitle>
-        <DialogDescription>Предмет попадёт в общий список. Снаряжение можно надеть, расходники — положить на пояс.</DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="item-name">Название</Label>
-          <Input id="item-name" value={i.name} maxLength={120} onChange={(e) => setI({ ...i, name: e.target.value })} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-1.5">
-            <Label>Категория</Label>
-            <Select value={i.category} onValueChange={(v) => setI({ ...i, category: v as ItemCategory, slot: v === "gear" ? i.slot ?? "weapon" : undefined })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{(Object.keys(CATEGORY_LABELS) as ItemCategory[]).map((k) => <SelectItem key={k} value={k}>{CATEGORY_LABELS[k]}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="item-qty">Количество</Label>
-            <Input id="item-qty" type="number" min={1} value={i.quantity} onChange={(e) => setI({ ...i, quantity: Number(e.target.value) })} />
-          </div>
-        </div>
-        {i.category === "gear" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Слот</Label>
-              <Select value={i.slot ?? "weapon"} onValueChange={(v) => setI({ ...i, slot: v as ItemSlotKind, beltCapacity: v === "belt" ? i.beltCapacity ?? 2 : undefined })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{(Object.keys(SLOT_KIND_LABELS) as ItemSlotKind[]).map((k) => <SelectItem key={k} value={k}>{SLOT_KIND_LABELS[k]}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            {i.slot === "belt" && (
-              <div className="grid gap-1.5">
-                <Label>Ячеек на поясе</Label>
-                <Select value={String(i.beltCapacity ?? 2)} onValueChange={(v) => setI({ ...i, beltCapacity: Number(v) })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: MAX_BELT - MIN_BELT + 1 }, (_, k) => k + MIN_BELT).map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="grid gap-1.5">
-          <Label htmlFor="item-desc">Описание</Label>
-          <Textarea id="item-desc" rows={3} value={i.description} onChange={(e) => setI({ ...i, description: e.target.value })} />
-        </div>
-        <Button variant="gold" onClick={() => {
-          if (!i.name.trim()) { toast.error("Введите название"); return; }
-          onSave({ ...i, slot: i.category === "gear" ? i.slot ?? "weapon" : undefined });
-        }}>Сохранить</Button>
-      </div>
-    </>
-  );
-}
