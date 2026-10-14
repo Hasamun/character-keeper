@@ -1,3 +1,5 @@
+import type { Character } from './index';
+import type { ActiveEffect } from './derived';
 import { normalizeEffect, type Effect } from './items';
 
 export type SkillType = 'active' | 'passive';
@@ -18,6 +20,7 @@ export interface SkillInstance {
   xp: number;
   draft: boolean;
   history: SkillHistoryEntry[];
+  lastUse?: SkillLastUse | undefined;
 }
 
 export const SKILL_MAX_LEVEL = 25;
@@ -128,7 +131,67 @@ export function normalizeSkills(raw: unknown): SkillInstance[] {
     const r = addSkillXp(definition.type, Number(s.level) || 1, Number(s.xp) || 0, 0);
     const v = Number(s.templateVersion);
     return [{ id: s.id, ...(typeof s.templateId === 'string' ? { templateId: s.templateId } : {}), ...(Number.isFinite(v) ? { templateVersion: v } : {}), definition, level: r.level, xp: r.xp, draft: s.draft === true,
+      ...(s.lastUse && typeof s.lastUse.opId === 'string' ? { lastUse: s.lastUse } : {}),
       history: Array.isArray(s.history) ? s.history.filter((h: any) => h && typeof h.text === 'string').map((h: any) => ({ id: String(h.id ?? ''), at: String(h.at ?? ''), text: h.text })) : [] }];
   });
 }
 export const normalizeExhaustion = (v: unknown) => (Number.isFinite(Number(v)) ? Math.max(0, Math.trunc(Number(v))) : 0);
+
+// ---------- Skill actions (pure; server commits result + journal atomically) ----------
+
+export interface SkillLastUse { opId: string; at: string; before: { level: number; xp: number }; after: { level: number; xp: number }; cost: number; prevEffects: ActiveEffect[] }
+export type SkillAction =
+  | { type: 'apply'; skillId: string }
+  | { type: 'xp'; skillId: string; delta: number; reason: string }
+  | { type: 'exhaustion'; delta: number; reason: string; kind: 'manual' | 'rest' | 'potion' }
+  | { type: 'undo'; skillId: string };
+export interface JournalEntry { skillId: string | null; action: string; details: Record<string, unknown>; compensates?: string | undefined }
+
+const skillEffectsFor = (c: Character, s: SkillInstance): ActiveEffect[] =>
+  resolveLevel(s.definition, s.level).map(effect => ({ id: `${s.id}:${effect.id}`, sourceItemId: s.id, sourceType: 'skill', sourceName: s.definition.name, effect: { ...effect }, equipmentBound: false }));
+const otherEffects = (c: Character, skillId: string) => (c.activeEffects ?? []).filter(a => !(a.sourceType === 'skill' && a.sourceItemId === skillId));
+const hasActive = (c: Character, skillId: string) => (c.activeEffects ?? []).some(a => a.sourceType === 'skill' && a.sourceItemId === skillId);
+const rec = (s: SkillInstance, at: string, text: string) => [...s.history, { id: `${at}:${s.history.length}`, at, text }].slice(-100);
+
+/** Applies one skill action. Returns the new character and journal entries, or an error (character unchanged). */
+export function performSkillAction(c: Character, a: SkillAction, opId: string, at = new Date().toISOString()): { character: Character; entries: JournalEntry[]; logText: string } | { error: string } {
+  const exhaustion = c.exhaustion ?? 0;
+  if (a.type === 'exhaustion') {
+    const delta = Math.trunc(a.delta); if (!delta) return { error: 'Укажите изменение' };
+    const next = Math.max(0, exhaustion + delta);
+    const label = a.kind === 'rest' ? 'Отдых' : a.kind === 'potion' ? 'Зелье/предмет' : 'Вручную';
+    return { character: { ...c, exhaustion: next }, entries: [{ skillId: null, action: 'exhaustion', details: { from: exhaustion, to: next, kind: a.kind, reason: a.reason } }], logText: `Истощение ${exhaustion} → ${next} (${label}${a.reason ? `: ${a.reason}` : ''})` };
+  }
+  const s = (c.skills ?? []).find(x => x.id === a.skillId);
+  if (!s) return { error: 'Навык не найден' };
+  const name = s.definition.name;
+  const put = (ns: SkillInstance) => (c.skills ?? []).map(x => (x.id === ns.id ? ns : x));
+  if (a.type === 'apply') {
+    if (s.definition.type !== 'active') return { error: 'Пассивный навык нельзя применить' };
+    if (s.draft) return { error: 'Черновик нельзя применить' };
+    const cost = costAt(s.definition, s.level);
+    const r = addSkillXp('active', s.level, s.xp, s.level >= SKILL_MAX_LEVEL ? 0 : 1);
+    const ns: SkillInstance = { ...s, level: r.level, xp: r.xp, lastUse: { opId, at, before: { level: s.level, xp: s.xp }, after: { level: r.level, xp: r.xp }, cost, prevEffects: (c.activeEffects ?? []).filter(x => x.sourceType === 'skill' && x.sourceItemId === s.id) } };
+    ns.history = rec(ns, at, `Применение: −${cost} истощения${r.level > s.level ? `, новый уровень ${r.level}` : ''}`);
+    const next = { ...c, skills: put(ns), exhaustion: exhaustion + cost };
+    next.activeEffects = [...otherEffects(c, s.id), ...skillEffectsFor(next, ns)];
+    return { character: next, entries: [{ skillId: s.id, action: 'apply', details: { cost, fromLevel: s.level, toLevel: r.level, fromXp: s.xp, toXp: r.xp } }], logText: `Применён навык «${name}» (истощение +${cost})${r.level > s.level ? `, уровень ${r.level}` : ''}` };
+  }
+  if (a.type === 'xp') {
+    const delta = Math.trunc(a.delta); if (!delta) return { error: 'Укажите количество XP' };
+    if (!a.reason.trim()) return { error: 'Укажите причину' };
+    const r = addSkillXp(s.definition.type, s.level, s.xp, delta);
+    const ns: SkillInstance = { ...s, level: r.level, xp: r.xp, lastUse: undefined };
+    ns.history = rec(ns, at, `XP ${delta > 0 ? '+' : ''}${delta}: ${a.reason}`);
+    const next = { ...c, skills: put(ns) };
+    if (r.level !== s.level && hasActive(c, s.id)) next.activeEffects = [...otherEffects(c, s.id), ...skillEffectsFor(next, ns)];
+    return { character: next, entries: [{ skillId: s.id, action: 'xp', details: { delta, reason: a.reason, fromLevel: s.level, toLevel: r.level } }], logText: `Навык «${name}»: XP ${delta > 0 ? '+' : ''}${delta} (${a.reason})` };
+  }
+  const u = s.lastUse;
+  if (!u) return { error: 'Нечего отменять' };
+  if (s.level !== u.after.level || s.xp !== u.after.xp || exhaustion < u.cost) return { error: 'После применения были другие изменения — отмена невозможна' };
+  const ns: SkillInstance = { ...s, level: u.before.level, xp: u.before.xp, lastUse: undefined };
+  ns.history = rec(ns, at, 'Отмена последнего применения');
+  const next = { ...c, skills: put(ns), exhaustion: exhaustion - u.cost, activeEffects: [...otherEffects(c, s.id), ...u.prevEffects] };
+  return { character: next, entries: [{ skillId: s.id, action: 'undo', details: { restoredLevel: u.before.level, restoredXp: u.before.xp, cost: u.cost }, compensates: u.opId }], logText: `Отменено применение «${name}»` };
+}
