@@ -1,6 +1,6 @@
 # Roadmap
 
-- [x] First admin assigned (redkillerprog@gmail.com)
+- [x] First admin assigned ()
 - [x] Step 1: Cloud, sign-in (email + Google), password reset, heroes in the database, browser-to-account migration, HP back, new tabs, signed exp input
 - [x] Step 2: item model (ranks F–S, types/subtypes, weapon/armor stats, effects), item cards (grid/list), item page, inventory on new model, cloak slot, conflict/requirement warnings
 - [x] Step 3: derived stats (AC, attack, damage, bonuses, resistances), active effects, consumables with charges, item comparison
