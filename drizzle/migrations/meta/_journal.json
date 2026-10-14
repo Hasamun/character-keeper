@@ -64,6 +64,13 @@
       "when": 1792009239551,
       "tag": "0008_skill_action_log",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792010982526,
+      "tag": "0009_skill_catalog",
+      "breakpoints": true
     }
   ]
 }
