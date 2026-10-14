@@ -322,6 +322,86 @@ export type Database = {
           },
         ]
       }
+      skill_catalog: {
+        Row: {
+          archived: boolean
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          owner_id: string
+          type: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          data: Json
+          id?: string
+          name: string
+          owner_id: string
+          type: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          owner_id?: string
+          type?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      skill_catalog_submissions: {
+        Row: {
+          catalog_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          owner_id: string
+          reason: string
+          revision: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          catalog_id?: string | null
+          created_at?: string
+          data: Json
+          id?: string
+          owner_id: string
+          reason?: string
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          owner_id?: string
+          reason?: string
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_catalog_submissions_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -347,6 +427,10 @@ export type Database = {
     Functions: {
       account_active: { Args: never; Returns: boolean }
       archive_catalog: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      archive_skill: {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
@@ -403,12 +487,25 @@ export type Database = {
         }
         Returns: string
       }
+      review_skill: {
+        Args: {
+          _approve: boolean
+          _id: string
+          _reason?: string
+          _revision: number
+        }
+        Returns: string
+      }
       set_account_block: {
         Args: { _blocked: boolean; _id: string; _reason: string }
         Returns: undefined
       }
       shared_item_image_access: { Args: { _path: string }; Returns: boolean }
       submit_catalog: {
+        Args: { _catalog_id?: string; _data: Json; _submission_id?: string }
+        Returns: string
+      }
+      submit_skill: {
         Args: { _catalog_id?: string; _data: Json; _submission_id?: string }
         Returns: string
       }

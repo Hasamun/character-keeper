@@ -288,3 +288,11 @@ export function aiDraftToDefinition(d: AiSkillDraft, makeId: () => string, exist
   }
   return buildFromResolved({ name: d.name.slice(0, 120), type: d.type === 'passive' ? 'passive' : 'active', description: d.description.slice(0, 4000) }, out, out.map(() => 'ai'));
 }
+
+// ---------- Catalog (stage 6) ----------
+/** Definition safe to publish: normalized, no personal progress/history/versions. */
+export const publishableSkill = (raw: unknown): SkillDefinition => { const d = normalizeSkillDefinition(raw); return { name: d.name.trim().slice(0, 120), type: d.type, description: d.description.slice(0, 4000), levels: d.levels }; };
+/** Independent personal copy of a catalog skill: starts at level 1 with 0 XP. */
+export function skillFromCatalog(raw: unknown, id: string, catalogName: string, at = new Date().toISOString()): SkillInstance {
+  return { id, definition: publishableSkill(raw), level: 1, xp: 0, draft: false, history: [{ id: `${at}:0`, at, text: `Добавлен из каталога «${catalogName}»` }] };
+}
