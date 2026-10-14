@@ -71,6 +71,13 @@
       "when": 1792010982526,
       "tag": "0009_skill_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792011527671,
+      "tag": "0010_skills_sharing_permission",
+      "breakpoints": true
     }
   ]
 }
