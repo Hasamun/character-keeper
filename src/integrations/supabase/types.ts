@@ -460,6 +460,17 @@ export type Database = {
         }
         Returns: Json
       }
+      commit_skill_action_member: {
+        Args: {
+          _actor: string
+          _data: Json
+          _entries: Json
+          _expected: string
+          _id: string
+          _op: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -501,6 +512,10 @@ export type Database = {
         Returns: undefined
       }
       shared_item_image_access: { Args: { _path: string }; Returns: boolean }
+      skill_effects_of: {
+        Args: { _effects: Json; _skill: boolean }
+        Returns: Json
+      }
       submit_catalog: {
         Args: { _catalog_id?: string; _data: Json; _submission_id?: string }
         Returns: string

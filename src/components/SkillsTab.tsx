@@ -13,6 +13,7 @@ import { uid, PRIMARY_STAT_NAMES, SECONDARY_SKILLS, type Character } from '@/lib
 import { EFFECT_KIND_LABELS, effectLabel, type EffectKind } from '@/lib/rules/items';
 import { SkillEditor } from '@/components/SkillEditor';
 import { SkillCatalog } from '@/components/SkillCatalog';
+import { SkillTransferDialog } from '@/components/SkillTransferDialog';
 import { submitSkill } from '@/lib/skill-catalog.functions';
 import { commitDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
 import { skillAction } from '@/lib/skills.functions';
@@ -27,7 +28,7 @@ function useSkillRunner(c: Character) {
       await store.flush();
       const version = store.version(c.id); if (!version) throw new Error('Персонаж ещё не сохранён');
       const r = await call({ data: { id: c.id, opId: crypto.randomUUID(), version, action: a } });
-      store.accept(r.character, r.version); return true;
+      if (r.character) store.accept(r.character, r.version); return true;
     } catch (e) {
       const m = e instanceof Error ? e.message : 'Не удалось выполнить действие'; toast.error(m);
       if (m.includes('изменился')) await store.refresh().catch(() => undefined);
@@ -75,7 +76,7 @@ export function SkillsSummary({ c }: { c: Character }) {
 
 function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit, onRestore }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean; onEdit: () => void; onRestore: (i: number) => void }) {
   const [open, setOpen] = useState(false); const [confirm, setConfirm] = useState(false); const [viewLevel, setViewLevel] = useState(s.level);
-  const send = useServerFn(submitSkill); const [sending, setSending] = useState(false);
+  const [transfer, setTransfer] = useState(false); const send = useServerFn(submitSkill); const [sending, setSending] = useState(false);
   const [xp, setXp] = useState(''); const [reason, setReason] = useState(''); const [del, setDel] = useState(false);
   const d = s.definition, need = xpToNext(d.type, s.level), cost = costAt(d, s.level), effects = resolveLevel(d, s.level);
   const ex = c.exhaustion ?? 0;
@@ -106,6 +107,7 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit,
         {d.type === 'active' && <Button size="sm" variant="outline" disabled={busy || !canUndo} onClick={() => void run({ type: 'undo', skillId: s.id })}>Отменить последнее применение</Button>}
         <Button size="sm" variant="outline" onClick={onEdit}>Редактировать</Button>
         <Button size="sm" variant="outline" onClick={onCopy}>Копировать</Button>
+        <Button size="sm" variant="outline" onClick={() => setTransfer(true)}>Передать / обучить</Button>
         <Button size="sm" variant="outline" disabled={sending || !!s.draft} title={s.draft ? 'Черновик нельзя отправить' : undefined} onClick={async () => { if (!window.confirm(`Отправить «${d.name}» на модерацию в общий каталог? Уходят только описание и уровни, без вашего XP и истории.`)) return; setSending(true); try { await send({ data: { definition: d } }); toast.success('Отправлено на модерацию'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); } finally { setSending(false); } }}>В каталог</Button>
         {canMove && <><Button size="icon" variant="outline" aria-label="Выше" onClick={() => onMove(-1)}><ArrowUp className="h-4 w-4" /></Button><Button size="icon" variant="outline" aria-label="Ниже" onClick={() => onMove(1)}><ArrowDown className="h-4 w-4" /></Button></>}
         <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDel(true)}>Удалить</Button>
@@ -115,6 +117,7 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit,
     </div>}
     <AlertDialog open={confirm} onOpenChange={setConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Высокое истощение</AlertDialogTitle><AlertDialogDescription>Сейчас истощение {ex}, после применения будет {ex + cost}. Применить «{d.name}»?</AlertDialogDescription></AlertDialogHeader>
       <AlertDialogFooter><AlertDialogCancel>Нет</AlertDialogCancel><AlertDialogAction onClick={() => void applyNow()}>Да</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    {transfer && <SkillTransferDialog c={c} s={s} open={transfer} onClose={() => setTransfer(false)} />}
     <AlertDialog open={del} onOpenChange={setDel}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Удалить «{d.name}»?</AlertDialogTitle><AlertDialogDescription>Навык, его XP, история и действующие эффекты будут удалены.</AlertDialogDescription></AlertDialogHeader>
       <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={onDelete}>Удалить</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
