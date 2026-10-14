@@ -8,7 +8,7 @@ describe('Sharing permissions', () => {
   it('read never grants edit', () => expect(canShareAction(normalizePermissions({notes:'read'}),'notes')).toBe(false));
   it('secondary exp needs edit of both coupled sections', () => { expect(canShareAction(normalizePermissions({secondary:'edit',primary:'read'}),'secondaryExp')).toBe(false); expect(canShareAction(normalizePermissions({secondary:'edit',primary:'edit'}),'secondaryExp')).toBe(true); });
   it('use requires inventory edit', () => {expect(canShareAction(normalizePermissions({inventory:'read'}),'use')).toBe(false);expect(canShareAction(normalizePermissions({inventory:'edit'}),'use')).toBe(true)});
-  it('derived combat requires every dependency', () => {const p=normalizePermissions({bio:'read',primary:'read',secondary:'read',inventory:'read'});expect(canDeriveShared(p)).toBe(true);expect(canDeriveShared({...p,inventory:'none'})).toBe(false)});
+  it('derived combat requires every dependency', () => {const p=normalizePermissions({bio:'read',primary:'read',secondary:'read',inventory:'read',skills:'read'});expect(canDeriveShared(p)).toBe(true);expect(canDeriveShared({...p,skills:'none'})).toBe(false);expect(canDeriveShared({...p,inventory:'none'})).toBe(false)});
   it('link expires after seven days', () => {expect(INVITE_LIFETIME_MS).toBe(604800000);expect(invitationUsable('pending',new Date(INVITE_LIFETIME_MS).toISOString(),INVITE_LIFETIME_MS,true)).toBe(false)});
   it('used and revoked links cannot be accepted', () => {expect(invitationUsable('accepted','2099-01-01',0,true)).toBe(false);expect(invitationUsable('revoked','2099-01-01',0,true)).toBe(false)});
   it('blocked accounts cannot accept', () => expect(invitationUsable('pending','2099-01-01',0,false)).toBe(false));
