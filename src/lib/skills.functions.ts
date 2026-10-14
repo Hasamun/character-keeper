@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { normalizeCharacter } from './storage';
 import { pushLog } from './rules';
 import { performSkillAction } from './rules/skills';
-import { canShareAction, normalizePermissions, projectShared } from './rules/sharing';
+import { canShareAction, normalizePermissions } from './rules/sharing';
 import type { Json } from '@/integrations/supabase/types';
 
 const action = z.discriminatedUnion('type', [
@@ -46,16 +46,7 @@ export const skillAction = createServerFn({ method: 'POST' }).middleware([requir
     }
     const out = res.data as { duplicate: boolean; version: string; data: unknown };
     const saved = normalizeCharacter(out.data);
-    if (member) {
-      const perm = await context.supabase.rpc('character_permission', { _id: data.id });
-      return { duplicate: out.duplicate, version: out.version, character: saved, shared: projectShared(saved, normalizePermissions((perm.data as { permissions?: unknown } | null)?.permissions)) };
-    }
+    // Members never receive the full character; their screen re-reads the permission-filtered view.
+    if (member) return { duplicate: out.duplicate, version: out.version, character: null };
     return { duplicate: out.duplicate, version: out.version, character: saved };
-  });
-    if (res.error) {
-      if (res.error.message.includes('CONFLICT')) throw new Error('Персонаж изменился в другом окне. Данные обновлены — повторите действие');
-      throw new Error(res.error.message.includes('Недостаточно') ? 'Недостаточно прав' : 'Не удалось выполнить действие');
-    }
-    const out = res.data as { duplicate: boolean; version: string; data: unknown };
-    return { duplicate: out.duplicate, version: out.version, character: normalizeCharacter(out.data) };
   });

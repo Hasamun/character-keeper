@@ -27,7 +27,7 @@ function useSkillRunner(c: Character) {
       await store.flush();
       const version = store.version(c.id); if (!version) throw new Error('Персонаж ещё не сохранён');
       const r = await call({ data: { id: c.id, opId: crypto.randomUUID(), version, action: a } });
-      store.accept(r.character, r.version); return true;
+      if (r.character) store.accept(r.character, r.version); return true;
     } catch (e) {
       const m = e instanceof Error ? e.message : 'Не удалось выполнить действие'; toast.error(m);
       if (m.includes('изменился')) await store.refresh().catch(() => undefined);
