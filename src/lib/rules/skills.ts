@@ -246,3 +246,45 @@ export function commitDefinition(c: Character, skillId: string, def: SkillDefini
   if (s && hasActive(c, skillId)) next.activeEffects = [...otherEffects(c, skillId), ...skillEffectsFor(next, s)];
   return next;
 }
+
+// ---------- AI drafts & selective merge (stage 5) ----------
+export interface ResolvedLevel { effects: Effect[]; cost: number }
+/** Rebuilds a patch-based definition from fully resolved per-level lists. */
+export function buildFromResolved(meta: Pick<SkillDefinition, 'name' | 'type' | 'description'>, levels: ResolvedLevel[], origins: PatchOrigin[]): SkillDefinition {
+  return { ...meta, levels: Array.from({ length: SKILL_MAX_LEVEL }, (_, i) => {
+    const cur = levels[i] ?? levels[levels.length - 1] ?? { effects: [], cost: 0 }, prev = i ? levels[i - 1] ?? cur : null;
+    const ops = opsFor(prev?.effects ?? [], cur.effects);
+    const costChanged = meta.type === 'active' && (!prev || prev.cost !== cur.cost);
+    const origin = ops.length || costChanged ? origins[i] ?? 'manual' : 'empty';
+    return { ops, origin, ...(costChanged ? { exhaustionCost: cur.cost } : {}) } as SkillLevelPatch;
+  }) };
+}
+export const resolvedLevels = (d: SkillDefinition): ResolvedLevel[] => Array.from({ length: SKILL_MAX_LEVEL }, (_, i) => ({ effects: resolveLevel(d, i + 1), cost: costAt(d, i + 1) }));
+/** Takes selected levels (fully resolved) from `proposal`, the rest from `current`. */
+export function mergeSelectedLevels(current: SkillDefinition, proposal: SkillDefinition, selected: Set<number>, takeMeta: boolean): SkillDefinition {
+  const a = resolvedLevels(current), b = resolvedLevels(proposal);
+  const curOrigins = current.levels.map(l => l.origin);
+  return buildFromResolved(takeMeta ? proposal : current, a.map((x, i) => (selected.has(i + 1) ? b[i]! : x)), a.map((_, i) => (selected.has(i + 1) ? 'ai' : curOrigins[i] === 'empty' ? 'manual' : curOrigins[i]!)));
+}
+export interface AiSkillDraft { name: string; type: SkillType; description: string; levels: { level: number; exhaustionCost: number | null; effects: (Omit<Effect, 'id' | 'damageType' | 'condition' | 'duration' | 'description'> & { key: string; damageType: string | null; condition: string | null; duration: string | null; description: string | null })[] }[] }
+const KINDS = new Set(['stat', 'skill', 'ac', 'attack', 'damage', 'resistance', 'vulnerability', 'extra_damage', 'condition', 'ability']);
+/** Converts model output (resolved effects per level, stable keys) into a patch definition; keys equal to existing ids keep them. */
+export function aiDraftToDefinition(d: AiSkillDraft, makeId: () => string, existingIds: string[] = []): SkillDefinition {
+  const ids = new Map<string, string>(existingIds.map(i => [i, i]));
+  const byLevel = new Map(d.levels.map(l => [Math.trunc(l.level), l]));
+  const out: ResolvedLevel[] = []; let last: ResolvedLevel = { effects: [], cost: 0 };
+  for (let lv = 1; lv <= SKILL_MAX_LEVEL; lv++) {
+    const l = byLevel.get(lv);
+    if (l) {
+      const seen = new Set<string>();
+      const effects = l.effects.filter(e => KINDS.has(e.kind) && !seen.has(e.key) && seen.add(e.key)).map((e): Effect => {
+        if (!ids.has(e.key)) ids.set(e.key, makeId());
+        return { id: ids.get(e.key)!, kind: e.kind, target: String(e.target ?? '').slice(0, 120), value: Math.trunc(Number(e.value)) || 0, automation: ['auto', 'confirm', 'manual'].includes(e.automation) ? e.automation : 'manual',
+          ...(e.damageType ? { damageType: e.damageType.slice(0, 60) } : {}), ...(e.condition ? { condition: e.condition.slice(0, 300) } : {}), ...(e.duration ? { duration: e.duration.slice(0, 120) } : {}), ...(e.description ? { description: e.description.slice(0, 500) } : {}) };
+      });
+      last = { effects, cost: l.exhaustionCost == null ? last.cost : Math.max(0, Math.trunc(l.exhaustionCost)) };
+    }
+    out.push(last);
+  }
+  return buildFromResolved({ name: d.name.slice(0, 120), type: d.type === 'passive' ? 'passive' : 'active', description: d.description.slice(0, 4000) }, out, out.map(() => 'ai'));
+}
