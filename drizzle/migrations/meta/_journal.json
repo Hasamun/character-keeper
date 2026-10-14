@@ -57,6 +57,13 @@
       "when": 1791919745119,
       "tag": "0007_harden_shared_images_and_invitation_locking",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792009239551,
+      "tag": "0008_skill_action_log",
+      "breakpoints": true
     }
   ]
 }

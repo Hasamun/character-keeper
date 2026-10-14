@@ -25,6 +25,10 @@ interface Store {
   get: (id: string) => Character | undefined;
   upsert: (c: Character) => Promise<void>;
   remove: (id: string) => void;
+  /** Server version of a character (for server-side atomic actions). */
+  version: (id: string) => string | undefined;
+  /** Accept a character already committed by the server. */
+  accept: (c: Character, version: string) => void;
 }
 const Ctx = createContext<Store | null>(null);
 
@@ -97,6 +101,8 @@ export function CharactersProvider({ userId, children }: { userId: string; child
     ready,
     characters,
     get: (id) => characters.find((c) => c.id === id),
+    version: (id) => versions.current.get(id),
+    accept: (c, version) => { versions.current.set(c.id, version); setCharacters((l) => l.map((x) => (x.id === c.id ? c : x))); },
     upsert: (c) => {
       if (!allowed) return Promise.reject(new Error("Доступ закрыт"));
       const u = { ...reconcileEffects(c), updatedAt: new Date().toISOString() };
