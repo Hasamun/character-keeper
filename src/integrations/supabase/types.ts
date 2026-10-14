@@ -278,6 +278,50 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_action_log: {
+        Row: {
+          action: string
+          actor_id: string
+          character_id: string
+          compensates: string | null
+          created_at: string
+          details: Json
+          id: string
+          op_id: string
+          skill_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          character_id: string
+          compensates?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          op_id: string
+          skill_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          character_id?: string
+          compensates?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          op_id?: string
+          skill_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_action_log_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -321,6 +365,16 @@ export type Database = {
           _sections: string[]
         }
         Returns: string
+      }
+      commit_skill_action: {
+        Args: {
+          _data: Json
+          _entries: Json
+          _expected: string
+          _id: string
+          _op: string
+        }
+        Returns: Json
       }
       has_role: {
         Args: {
