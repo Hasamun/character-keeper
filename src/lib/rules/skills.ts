@@ -131,7 +131,7 @@ export function normalizeSkills(raw: unknown): SkillInstance[] {
     const r = addSkillXp(definition.type, Number(s.level) || 1, Number(s.xp) || 0, 0);
     const v = Number(s.templateVersion);
     return [{ id: s.id, ...(typeof s.templateId === 'string' ? { templateId: s.templateId } : {}), ...(Number.isFinite(v) ? { templateVersion: v } : {}), definition, level: r.level, xp: r.xp, draft: s.draft === true,
-      ...(s.lastUse && typeof s.lastUse.opId === 'string' ? { lastUse: s.lastUse } : {}),
+      ...(s.lastUse && typeof s.lastUse.opId === 'string' && Array.isArray(s.lastUse.prevEffects) ? { lastUse: s.lastUse } : {}),
       history: Array.isArray(s.history) ? s.history.filter((h: any) => h && typeof h.text === 'string').map((h: any) => ({ id: String(h.id ?? ''), at: String(h.at ?? ''), text: h.text })) : [] }];
   });
 }
