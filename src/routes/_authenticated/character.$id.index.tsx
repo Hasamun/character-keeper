@@ -1,3 +1,4 @@
+import { SkillsTab, SkillsSummary } from "@/components/SkillsTab";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -110,15 +111,9 @@ function CharacterPage() {
         ))}
       </nav>
 
-      {tab === "main" && <><DerivedStats c={c} save={upsert} /><NotesTab c={c} save={upsert} /></>}
+      {tab === "main" && <><DerivedStats c={c} save={upsert} /><SkillsSummary c={c} /><NotesTab c={c} save={upsert} /></>}
       {tab === "stats" && <StatsTab c={c} onPick={setTarget} />}
-      {tab === "skills" && (
-        <div className="panel grid place-items-center gap-3 p-12 text-center">
-          <ScrollText className="h-12 w-12 text-primary/70" />
-          <h2 className="text-xl">Навыки</h2>
-          <p className="max-w-sm text-sm text-muted-foreground">Раздел способностей и умений героя появится позже.</p>
-        </div>
-      )}
+      {tab === "skills" && <SkillsTab c={c} save={upsert} />}
       {tab === "history" && <HistoryTab c={c} />}
       {tab === "inventory" && <InventoryTab c={c} save={upsert} />}
 
