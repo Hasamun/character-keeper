@@ -1,3 +1,4 @@
+import type { SkillInstance } from './skills';
 import type { ActiveEffect } from "./derived";
 import { emptyInventory, type Inventory } from "./inventory";
 // Game rules ported 1:1 from the original app_2.py. Pure functions, no UI.
@@ -94,6 +95,9 @@ export interface Character {
   notes: Note[];
   inventory: Inventory;
   activeEffects?: ActiveEffect[];
+  /** Acquired skills (separate from secondary stats such as Стойкость). */
+  skills?: SkillInstance[];
+  exhaustion?: number;
   createdAt: string;
   updatedAt: string;
 }

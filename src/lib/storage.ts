@@ -5,6 +5,7 @@ import {
 import { normalizeInventory } from "./rules/inventory";
 
 import { normalizeActiveEffects } from "./rules/derived";
+import { normalizeExhaustion, normalizeSkills } from "./rules/skills";
 
 const KEY = "rpg-tracker:characters:v1";
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -51,6 +52,8 @@ export function normalizeCharacter(data: any): Character {
   }
   c.inventory = normalizeInventory(data.inventory);
   c.activeEffects = normalizeActiveEffects(data.activeEffects);
+  c.skills = normalizeSkills(data.skills);
+  c.exhaustion = normalizeExhaustion(data.exhaustion);
   c.createdAt = String(data.createdAt ?? now);
   c.updatedAt = String(data.updatedAt ?? now);
   return c;
