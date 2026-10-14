@@ -21,6 +21,7 @@ export interface SkillInstance {
   draft: boolean;
   history: SkillHistoryEntry[];
   lastUse?: SkillLastUse | undefined;
+  versions?: SkillVersion[] | undefined;
 }
 
 export const SKILL_MAX_LEVEL = 25;
@@ -132,6 +133,7 @@ export function normalizeSkills(raw: unknown): SkillInstance[] {
     const v = Number(s.templateVersion);
     return [{ id: s.id, ...(typeof s.templateId === 'string' ? { templateId: s.templateId } : {}), ...(Number.isFinite(v) ? { templateVersion: v } : {}), definition, level: r.level, xp: r.xp, draft: s.draft === true,
       ...(s.lastUse && typeof s.lastUse.opId === 'string' && Array.isArray(s.lastUse.prevEffects) ? { lastUse: s.lastUse } : {}),
+      ...(Array.isArray(s.versions) ? { versions: s.versions.slice(-VERSION_LIMIT).map((v: any) => ({ at: String(v?.at ?? ''), note: String(v?.note ?? ''), definition: normalizeSkillDefinition(v?.definition) })) } : {}),
       history: Array.isArray(s.history) ? s.history.filter((h: any) => h && typeof h.text === 'string').map((h: any) => ({ id: String(h.id ?? ''), at: String(h.at ?? ''), text: h.text })) : [] }];
   });
 }
@@ -194,4 +196,53 @@ export function performSkillAction(c: Character, a: SkillAction, opId: string, a
   ns.history = rec(ns, at, 'Отмена последнего применения');
   const next = { ...c, skills: put(ns), exhaustion: exhaustion - u.cost, activeEffects: [...otherEffects(c, s.id), ...u.prevEffects] };
   return { character: next, entries: [{ skillId: s.id, action: 'undo', details: { restoredLevel: u.before.level, restoredXp: u.before.xp, cost: u.cost }, compensates: u.opId }], logText: `Отменено применение «${name}»` };
+}
+
+// ---------- Editing (stage 4) ----------
+const same = (a: Effect, b: Effect) => JSON.stringify(a) === JSON.stringify(b);
+/** Minimal patch turning `prev` (resolved previous level) into `desired`. */
+export function opsFor(prev: Effect[], desired: Effect[]): SkillOp[] {
+  const p = new Map(prev.map(e => [e.id, e])), d = new Set(desired.map(e => e.id));
+  return [
+    ...desired.flatMap((e): SkillOp[] => { const o = p.get(e.id); return !o ? [{ op: 'add', effect: { ...e } }] : same(o, e) ? [] : [{ op: 'update', effect: { ...e } }]; }),
+    ...prev.filter(e => !d.has(e.id)).map((e): SkillOp => ({ op: 'remove', effectId: e.id })),
+  ];
+}
+/** Sets the full effect list of `from`; levels from+1..to are cleared so they inherit it. Levels after `to` keep their own patches. */
+export function setLevelEffects(def: SkillDefinition, from: number, to: number, desired: Effect[], origin: PatchOrigin = 'manual'): SkillDefinition {
+  const f = clampLevel(from), t = Math.max(f, clampLevel(to));
+  const levels = def.levels.map((l, i) => {
+    const lv = i + 1;
+    if (lv === f) return { ...l, ops: opsFor(f > 1 ? resolveLevel(def, f - 1) : [], desired), origin };
+    if (lv > f && lv <= t) return { ...l, ops: [], origin: l.exhaustionCost != null ? l.origin : 'empty' as PatchOrigin };
+    return l;
+  });
+  // Keep later levels' explicit patches meaningful: updates/removes of effects that no longer exist are dropped by resolveLevel.
+  return { ...def, levels };
+}
+/** Sets (or clears to inherit) the exhaustion cost on a range of levels. */
+export function setLevelCost(def: SkillDefinition, from: number, to: number, cost: number | undefined): SkillDefinition {
+  const f = clampLevel(from), t = Math.max(f, clampLevel(to));
+  return { ...def, levels: def.levels.map((l, i) => {
+    const lv = i + 1; if (lv < f || lv > t) return l;
+    const { exhaustionCost: _c, ...rest } = l;
+    const c = lv === f ? cost : undefined;
+    return c == null ? rest : { ...rest, exhaustionCost: Math.max(0, Math.trunc(c)), origin: l.origin === 'empty' ? 'manual' : l.origin };
+  }) };
+}
+export const rankRange = (level: number): [number, number] => { const s = Math.floor((clampLevel(level) - 1) / 5) * 5 + 1; return [s, s + 4]; };
+export const filledLevels = (def: SkillDefinition) => def.levels.flatMap((l, i) => (l.origin !== 'empty' ? [i + 1] : []));
+export interface SkillVersion { at: string; definition: SkillDefinition; note: string }
+export const VERSION_LIMIT = 10;
+/** Saves a new definition, remembering the previous one; XP and level are untouched; running effects are refreshed. */
+export function commitDefinition(c: Character, skillId: string, def: SkillDefinition, draft: boolean, note: string, at = new Date().toISOString()): Character {
+  const skills = (c.skills ?? []).map(s => {
+    if (s.id !== skillId) return s;
+    const versions = [...(s.versions ?? []), { at, definition: s.definition, note }].slice(-VERSION_LIMIT);
+    return { ...s, definition: def, draft, versions, lastUse: undefined, history: rec(s, at, note) };
+  });
+  const s = skills.find(x => x.id === skillId);
+  const next = { ...c, skills };
+  if (s && hasActive(c, skillId)) next.activeEffects = [...otherEffects(c, skillId), ...skillEffectsFor(next, s)];
+  return next;
 }

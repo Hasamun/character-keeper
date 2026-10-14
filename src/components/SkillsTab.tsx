@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from '@/lib/utils';
 import { uid, PRIMARY_STAT_NAMES, SECONDARY_SKILLS, type Character } from '@/lib/rules';
 import { EFFECT_KIND_LABELS, effectLabel, type EffectKind } from '@/lib/rules/items';
-import { costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
+import { SkillEditor } from '@/components/SkillEditor';
+import { commitDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
 import { skillAction } from '@/lib/skills.functions';
 import { useCharacters } from '@/lib/characters-store';
 
@@ -70,42 +71,7 @@ export function SkillsSummary({ c }: { c: Character }) {
   </section>;
 }
 
-function NewSkillDialog({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (s: SkillInstance) => void }) {
-  const [name, setName] = useState(''); const [type, setType] = useState<SkillType>('active'); const [description, setDescription] = useState('');
-  const [cost, setCost] = useState('10'); const [kind, setKind] = useState<EffectKind | ''>(''); const [target, setTarget] = useState(''); const [value, setValue] = useState('1'); const [text, setText] = useState('');
-  const needsTarget = kind === 'stat' || kind === 'skill';
-  const create = () => {
-    if (!name.trim()) { toast.error('Введите название'); return; }
-    const def = newSkillDefinition(type); def.name = name.trim(); def.description = description.trim();
-    const lv = def.levels[0]!;
-    if (type === 'active') { const n = Math.trunc(Number(cost)); if (!Number.isFinite(n) || n < 0) { toast.error('Стоимость — целое число от 0'); return; } lv.exhaustionCost = n; }
-    if (kind) {
-      if (needsTarget && !target) { toast.error('Выберите характеристику'); return; }
-      lv.ops.push({ op: 'add', effect: { id: uid(), kind, target: needsTarget ? target : '', value: Math.trunc(Number(value)) || 0, automation: 'auto', ...(text.trim() ? { description: text.trim() } : {}) } });
-    }
-    lv.origin = 'manual';
-    onCreate({ id: uid(), definition: def, level: 1, xp: 0, draft: false, history: [{ id: uid(), at: new Date().toISOString(), text: 'Навык создан вручную' }] });
-    setName(''); setDescription(''); setKind(''); setText('');
-  };
-  return <Dialog open={open} onOpenChange={o => !o && onClose()}>
-    <DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Новый навык</DialogTitle></DialogHeader>
-      <Input value={name} onChange={e => setName(e.target.value)} placeholder="Название" maxLength={120} />
-      <div className="flex gap-2">{(['active', 'passive'] as const).map(t => <Button key={t} size="sm" variant={type === t ? 'default' : 'outline'} onClick={() => setType(t)}>{t === 'active' ? 'Активный' : 'Пассивный'}</Button>)}</div>
-      <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание" maxLength={4000} />
-      {type === 'active' && <label className="grid gap-1 text-sm">Стоимость истощения на 1 уровне<Input type="number" value={cost} onChange={e => setCost(e.target.value)} /></label>}
-      <div className="grid gap-2 rounded-md border border-border p-3 text-sm"><span className="font-semibold">Эффект 1 уровня (необязательно)</span>
-        <select className="h-9 rounded-md border border-border bg-background px-2" value={kind} onChange={e => setKind(e.target.value as EffectKind | '')}><option value="">Без эффекта</option>{Object.entries(EFFECT_KIND_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-        {needsTarget && <select className="h-9 rounded-md border border-border bg-background px-2" value={target} onChange={e => setTarget(e.target.value)}><option value="">Выберите…</option>{(kind === 'stat' ? PRIMARY_STAT_NAMES : SECONDARY_SKILLS).map(n => <option key={n} value={n}>{n}</option>)}</select>}
-        {kind && <Input type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="Значение" />}
-        {kind && <Input value={text} onChange={e => setText(e.target.value)} placeholder="Описание эффекта" maxLength={500} />}
-      </div>
-      <p className="text-xs text-muted-foreground">Развитие по 25 уровням настраивается в полном редакторе (следующий этап).</p>
-      <DialogFooter><Button variant="outline" onClick={onClose}>Отмена</Button><Button onClick={create}>Создать</Button></DialogFooter>
-    </DialogContent>
-  </Dialog>;
-}
-
-function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean }) {
+function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit, onRestore }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean; onEdit: () => void; onRestore: (i: number) => void }) {
   const [open, setOpen] = useState(false); const [confirm, setConfirm] = useState(false); const [viewLevel, setViewLevel] = useState(s.level);
   const [xp, setXp] = useState(''); const [reason, setReason] = useState(''); const [del, setDel] = useState(false);
   const d = s.definition, need = xpToNext(d.type, s.level), cost = costAt(d, s.level), effects = resolveLevel(d, s.level);
@@ -117,7 +83,7 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove }: { c: 
       <button className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         <ChevronDown className={cn('mt-1 h-4 w-4 shrink-0 transition', open && 'rotate-180')} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2"><b className="break-words">{d.name}</b><span className="text-xs text-muted-foreground">{d.type === 'active' ? 'Активный' : 'Пассивный'} · {rankOf(s.level)} {levelInRank(s.level)} (ур. {s.level}){d.type === 'active' && ` · истощение ${cost}`}</span></div>
+          <div className="flex flex-wrap items-baseline gap-x-2"><b className="break-words">{d.name}</b>{s.draft && <span className="rounded border border-border px-1 text-xs text-muted-foreground">черновик</span>}<span className="text-xs text-muted-foreground">{d.type === 'active' ? 'Активный' : 'Пассивный'} · {rankOf(s.level)} {levelInRank(s.level)} (ур. {s.level}){d.type === 'active' && ` · истощение ${cost}`}</span></div>
           <div className="mt-1 flex items-center gap-2"><Progress value={need ? (s.xp / need) * 100 : 100} className="h-1.5" /><span className="shrink-0 text-xs text-muted-foreground">{need ? `${s.xp}/${need} XP` : 'Максимум'}</span></div>
           {effects.length > 0 && <p className="mt-1 truncate text-xs text-muted-foreground">{effects.map(effectLabel).join(' · ')}</p>}
         </div>
@@ -135,10 +101,12 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove }: { c: 
         <Button variant="outline" disabled={busy} onClick={async () => { const n = Math.trunc(Number(xp)); if (!n) { toast.error('Введите целое число'); return; } if (await run({ type: 'xp', skillId: s.id, delta: n, reason: reason.trim() })) { setXp(''); setReason(''); } }}>Изменить XP</Button></div>
       <div className="flex flex-wrap gap-2">
         {d.type === 'active' && <Button size="sm" variant="outline" disabled={busy || !canUndo} onClick={() => void run({ type: 'undo', skillId: s.id })}>Отменить последнее применение</Button>}
+        <Button size="sm" variant="outline" onClick={onEdit}>Редактировать</Button>
         <Button size="sm" variant="outline" onClick={onCopy}>Копировать</Button>
         {canMove && <><Button size="icon" variant="outline" aria-label="Выше" onClick={() => onMove(-1)}><ArrowUp className="h-4 w-4" /></Button><Button size="icon" variant="outline" aria-label="Ниже" onClick={() => onMove(1)}><ArrowDown className="h-4 w-4" /></Button></>}
         <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDel(true)}>Удалить</Button>
       </div>
+      {(s.versions?.length ?? 0) > 0 && <details><summary className="cursor-pointer text-primary">Версии ({s.versions!.length})</summary><ul className="mt-1 grid gap-1 text-xs">{s.versions!.map((v, i) => ({ v, i })).reverse().map(({ v, i }) => <li key={i} className="flex flex-wrap items-center justify-between gap-2"><span className="text-muted-foreground">До правки {new Date(v.at).toLocaleString('ru-RU')}: «{v.definition.name}»</span><Button size="sm" variant="outline" onClick={() => onRestore(i)}>Восстановить</Button></li>)}</ul></details>}
       {s.history.length > 0 && <details><summary className="cursor-pointer text-primary">История ({s.history.length})</summary><ul className="mt-1 grid gap-1 text-xs text-muted-foreground">{[...s.history].reverse().map(h => <li key={h.id}>{new Date(h.at).toLocaleString('ru-RU')} — {h.text}</li>)}</ul></details>}
     </div>}
     <AlertDialog open={confirm} onOpenChange={setConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Высокое истощение</AlertDialogTitle><AlertDialogDescription>Сейчас истощение {ex}, после применения будет {ex + cost}. Применить «{d.name}»?</AlertDialogDescription></AlertDialogHeader>
@@ -151,7 +119,8 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove }: { c: 
 export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => Promise<void> }) {
   const [sub, setSub] = useState<'mine' | 'catalog'>('mine');
   const [q, setQ] = useState(''); const [filter, setFilter] = useState<'all' | SkillType>('all'); const [sort, setSort] = useState<'own' | 'name' | 'level'>('own');
-  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const editSkill = editing && editing !== 'new' ? (c.skills ?? []).find(x => x.id === editing) ?? null : null;
   const { run, busy } = useSkillRunner(c);
   const skills = c.skills ?? [];
   const shown = useMemo(() => {
@@ -173,13 +142,19 @@ export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => P
         <Input className="min-w-40 flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по названию" />
         <select aria-label="Фильтр" className="h-9 rounded-md border border-border bg-background px-2 text-sm" value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="all">Все</option><option value="active">Активные</option><option value="passive">Пассивные</option></select>
         <select aria-label="Сортировка" className="h-9 rounded-md border border-border bg-background px-2 text-sm" value={sort} onChange={e => setSort(e.target.value as typeof sort)}><option value="own">Мой порядок</option><option value="name">По алфавиту</option><option value="level">По уровню</option></select>
-        <Button onClick={() => setCreating(true)}><Plus className="mr-1 h-4 w-4" />Создать навык</Button>
+        <Button onClick={() => setEditing('new')}><Plus className="mr-1 h-4 w-4" />Создать навык</Button>
       </div>
       {shown.length === 0 ? <p className="panel p-6 text-center text-sm text-muted-foreground">{skills.length ? 'Ничего не найдено' : 'У героя пока нет навыков'}</p>
-        : shown.map(s => <SkillCard key={s.id} c={c} s={s} run={run} busy={busy} canMove={sort === 'own' && !q && filter === 'all'} onMove={d => move(s.id, d)}
+        : shown.map(s => <SkillCard key={s.id} c={c} s={s} run={run} busy={busy} canMove={sort === 'own' && !q && filter === 'all'} onMove={d => move(s.id, d)} onEdit={() => setEditing(s.id)}
+          onRestore={i => { const v = s.versions![i]!; if (confirm(`Восстановить версию от ${new Date(v.at).toLocaleString('ru-RU')}? Текущая сохранится в версиях.`)) void save(commitDefinition(c, s.id, v.definition, !!s.draft, 'Восстановлена прежняя версия')).catch(() => undefined); }}
           onCopy={() => void setSkills([...skills, { ...structuredClone(s), id: uid(), lastUse: undefined, level: 1, xp: 0, definition: { ...structuredClone(s.definition), name: `${s.definition.name} (копия)` }, history: [{ id: uid(), at: new Date().toISOString(), text: `Копия навыка «${s.definition.name}»` }] }])}
           onDelete={() => void setSkills(skills.filter(x => x.id !== s.id), { activeEffects: (c.activeEffects ?? []).filter(a => !(a.sourceType === 'skill' && a.sourceItemId === s.id)) })} />)}
     </>}
-    <NewSkillDialog open={creating} onClose={() => setCreating(false)} onCreate={s => { void setSkills([...skills, s]); setCreating(false); }} />
+    <SkillEditor open={editing !== null} initial={editSkill?.definition ?? null} initialDraft={!!editSkill?.draft} onClose={() => setEditing(null)}
+      onSave={(def, draft) => {
+        const p = editSkill ? save(commitDefinition(c, editSkill.id, def, draft, draft ? 'Изменён в редакторе (черновик)' : 'Изменён в редакторе'))
+          : setSkills([...skills, { id: uid(), definition: def, level: 1, xp: 0, draft, history: [{ id: uid(), at: new Date().toISOString(), text: 'Навык создан вручную' }] }]);
+        void Promise.resolve(p).then(() => { setEditing(null); toast.success('Навык сохранён'); }).catch(() => undefined);
+      }} />
   </section>;
 }
