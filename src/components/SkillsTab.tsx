@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { uid, PRIMARY_STAT_NAMES, SECONDARY_SKILLS, type Character } from '@/lib/rules';
 import { EFFECT_KIND_LABELS, effectLabel, type EffectKind } from '@/lib/rules/items';
 import { SkillEditor } from '@/components/SkillEditor';
+import { SkillCatalog } from '@/components/SkillCatalog';
+import { submitSkill } from '@/lib/skill-catalog.functions';
 import { commitDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
 import { skillAction } from '@/lib/skills.functions';
 import { useCharacters } from '@/lib/characters-store';
@@ -73,6 +75,7 @@ export function SkillsSummary({ c }: { c: Character }) {
 
 function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit, onRestore }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean; onEdit: () => void; onRestore: (i: number) => void }) {
   const [open, setOpen] = useState(false); const [confirm, setConfirm] = useState(false); const [viewLevel, setViewLevel] = useState(s.level);
+  const send = useServerFn(submitSkill); const [sending, setSending] = useState(false);
   const [xp, setXp] = useState(''); const [reason, setReason] = useState(''); const [del, setDel] = useState(false);
   const d = s.definition, need = xpToNext(d.type, s.level), cost = costAt(d, s.level), effects = resolveLevel(d, s.level);
   const ex = c.exhaustion ?? 0;
@@ -103,6 +106,7 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit,
         {d.type === 'active' && <Button size="sm" variant="outline" disabled={busy || !canUndo} onClick={() => void run({ type: 'undo', skillId: s.id })}>Отменить последнее применение</Button>}
         <Button size="sm" variant="outline" onClick={onEdit}>Редактировать</Button>
         <Button size="sm" variant="outline" onClick={onCopy}>Копировать</Button>
+        <Button size="sm" variant="outline" disabled={sending || !!s.draft} title={s.draft ? 'Черновик нельзя отправить' : undefined} onClick={async () => { if (!confirm(`Отправить «${d.name}» на модерацию в общий каталог? Уходят только описание и уровни, без вашего XP и истории.`)) return; setSending(true); try { await send({ data: { definition: d } }); toast.success('Отправлено на модерацию'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); } finally { setSending(false); } }}>В каталог</Button>
         {canMove && <><Button size="icon" variant="outline" aria-label="Выше" onClick={() => onMove(-1)}><ArrowUp className="h-4 w-4" /></Button><Button size="icon" variant="outline" aria-label="Ниже" onClick={() => onMove(1)}><ArrowDown className="h-4 w-4" /></Button></>}
         <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDel(true)}>Удалить</Button>
       </div>
@@ -134,7 +138,7 @@ export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => P
   const skillEffects = (c.activeEffects ?? []).filter(a => a.sourceType === 'skill');
   return <section className="grid gap-4">
     <div className="flex gap-2">{([['mine', 'Мои навыки'], ['catalog', 'Каталог']] as const).map(([k, l]) => <Button key={k} variant={sub === k ? 'default' : 'outline'} size="sm" onClick={() => setSub(k)}>{l}</Button>)}</div>
-    {sub === 'catalog' ? <div className="panel p-6 text-sm text-muted-foreground">Общий каталог навыков ещё не подключён: его публикация и модерация — отдельный этап работ. Личные навыки уже работают во вкладке «Мои навыки».</div> : <>
+    {sub === 'catalog' ? <SkillCatalog c={c} /> : <>
       <div className="panel grid gap-3 p-3"><ExhaustionPanel c={c} />
         {skillEffects.length > 0 && <div className="text-sm"><div className="font-semibold">Действующие эффекты навыков</div>{skillEffects.map(a => <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-1"><span>{a.sourceName}: {effectLabel(a.effect)}</span><Button size="sm" variant="outline" onClick={() => void save({ ...c, activeEffects: (c.activeEffects ?? []).filter(x => x.id !== a.id) })}>Завершить</Button></div>)}</div>}
       </div>
