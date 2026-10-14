@@ -8,6 +8,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { cn } from '@/lib/utils';
 import { uid, PRIMARY_STAT_NAMES, SECONDARY_SKILLS } from '@/lib/rules';
 import { EFFECT_KIND_LABELS, effectLabel, type Effect, type EffectKind, type Automation } from '@/lib/rules/items';
+import { useServerFn } from '@tanstack/react-start';
+import { generateSkill } from '@/lib/skill-ai.functions';
+import { aiDraftToDefinition, mergeSelectedLevels, resolvedLevels, type AiSkillDraft } from '@/lib/rules/skills';
 import { costAt, diffLevels, filledLevels, levelInRank, newSkillDefinition, rankOf, rankRange, resolveLevel, setLevelCost, setLevelEffects, SKILL_MAX_LEVEL, type SkillDefinition } from '@/lib/rules/skills';
 
 const AUTO: Record<Automation, string> = { auto: 'Автоматически', confirm: 'С подтверждением', manual: 'Вручную (игровое решение)' };
@@ -31,6 +34,45 @@ function EffectRow({ e, onChange, onRemove }: { e: Effect; onChange: (e: Effect)
     </div>
     <Input placeholder="Описание эффекта" maxLength={500} value={e.description ?? ''} onChange={x => set({ description: x.target.value || undefined })} />
   </div>;
+}
+
+function AiPanel({ def, onAccept }: { def: SkillDefinition; onAccept: (d: SkillDefinition) => void }) {
+  const gen = useServerFn(generateSkill);
+  const [prompt, setPrompt] = useState(''); const [busy, setBusy] = useState(false);
+  const [proposal, setProposal] = useState<SkillDefinition | null>(null); const [selected, setSelected] = useState<Set<number>>(new Set()); const [takeMeta, setTakeMeta] = useState(true);
+  const isEmpty = def.levels.every(l => l.origin === 'empty') && !def.name.trim();
+  const diffs = useMemo(() => (proposal ? diffLevels(def, proposal) : []), [def, proposal]);
+  const run = async () => {
+    if (prompt.trim().length < 3) { toast.error('Опишите навык подробнее'); return; }
+    setBusy(true);
+    try {
+      const current = isEmpty ? null : { name: def.name, type: def.type, description: def.description, levels: resolvedLevels(def).map((l, i) => ({ level: i + 1, exhaustionCost: def.type === 'active' ? l.cost : null, effects: l.effects.map(e => ({ ...e, key: e.id })) })) };
+      const r = await gen({ data: { prompt: prompt.trim(), type: isEmpty ? null : def.type, current } });
+      const p = aiDraftToDefinition(r.draft as AiSkillDraft, uid, resolvedLevels(def).flatMap(l => l.effects.map(e => e.id)));
+      setProposal(p); setSelected(new Set(diffLevels(def, p).map(d => d.level))); setTakeMeta(true);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка ИИ'); } finally { setBusy(false); }
+  };
+  return <details className="panel p-3" open={!!proposal}>
+    <summary className="cursor-pointer font-semibold text-primary">{isEmpty ? 'Создать с помощью ИИ' : 'Доработать с помощью ИИ'}</summary>
+    {!proposal ? <div className="mt-2 grid gap-2">
+      <Textarea value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={2000} placeholder={isEmpty ? 'Например: активный навык щитоносца — парирование, рост КБ и способность прикрыть союзника' : 'Что изменить: например, ослабить бонусы на 1–10 уровнях'} />
+      <Button size="sm" disabled={busy} onClick={() => void run()}>{busy ? 'ИИ думает… (до минуты)' : isEmpty ? 'Сгенерировать' : 'Предложить изменения'}</Button>
+      <p className="text-xs text-muted-foreground">Ничего не сохраняется само: вы увидите отличия и выберете, что принять.</p>
+    </div> : <div className="mt-2 grid gap-2 text-sm">
+      <label className="flex items-start gap-2"><input type="checkbox" checked={takeMeta} onChange={e => setTakeMeta(e.target.checked)} /><span>Название, тип и описание: <b>{proposal.name}</b> ({proposal.type === 'active' ? 'активный' : 'пассивный'}) — {proposal.description}</span></label>
+      <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setSelected(new Set(diffs.map(d => d.level)))}>Выбрать все</Button><Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Снять все</Button></div>
+      {diffs.length === 0 && <p className="text-muted-foreground">Уровни не отличаются от текущих.</p>}
+      {diffs.map(d => <label key={d.level} className="flex items-start gap-2 rounded-md border border-border p-2"><input type="checkbox" checked={selected.has(d.level)} onChange={e => { const n = new Set(selected); if (e.target.checked) n.add(d.level); else n.delete(d.level); setSelected(n); }} />
+        <div><div className="text-xs text-muted-foreground">Уровень {d.level} · {rankOf(d.level)} {levelInRank(d.level)}</div>
+          {d.added.map(e => <div key={'a' + e.id} className="text-primary">+ {effectLabel(e)}{e.description ? ` — ${e.description}` : ''}</div>)}
+          {d.removed.map(e => <div key={'r' + e.id} className="text-destructive">− {effectLabel(e)}</div>)}
+          {d.changed.map(x => <div key={'c' + x.after.id}>~ {effectLabel(x.before)} → {effectLabel(x.after)}</div>)}
+          {d.costBefore !== d.costAfter && <div>Истощение: {d.costBefore} → {d.costAfter}</div>}</div></label>)}
+      <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => { onAccept(mergeSelectedLevels(def, proposal, selected, takeMeta)); setProposal(null); toast.success('Принято в редактор — проверьте и сохраните'); }}>Принять выбранное</Button>
+        <Button size="sm" variant="outline" onClick={() => setProposal(null)}>Отклонить</Button></div>
+      <p className="text-xs text-muted-foreground">Выбранный уровень принимается целиком, со всем набором эффектов на нём.</p>
+    </div>}
+  </details>;
 }
 
 export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { open: boolean; initial: SkillDefinition | null; initialDraft: boolean; onClose: () => void; onSave: (def: SkillDefinition, draft: boolean) => void }) {
@@ -72,6 +114,7 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { 
         <label className="flex items-center gap-2"><input type="checkbox" checked={draft} onChange={e => setDraft(e.target.checked)} />Сохранить как черновик</label>
         <DialogFooter><Button variant="outline" onClick={() => setReview(false)}>Назад к редактору</Button><Button onClick={() => onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft)}>Сохранить</Button></DialogFooter>
       </div> : <div className="grid gap-3 text-sm">
+        <AiPanel def={def} onAccept={setDef} />
         <Input value={def.name} onChange={e => setDef({ ...def, name: e.target.value })} placeholder="Название" maxLength={120} />
         <div className="flex gap-2">{(['active', 'passive'] as const).map(t => <Button key={t} size="sm" variant={def.type === t ? 'default' : 'outline'} onClick={() => setDef({ ...def, type: t })}>{t === 'active' ? 'Активный' : 'Пассивный'}</Button>)}</div>
         <Textarea value={def.description} onChange={e => setDef({ ...def, description: e.target.value })} placeholder="Описание" maxLength={4000} />
