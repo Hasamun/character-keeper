@@ -1,13 +1,16 @@
 import { getArmorClass, getHp, PRIMARY_STAT_NAMES, SECONDARY_SKILLS, pushLog, uid, type Character } from './index';
 import { canEquipHand, canEquipSlot, equipHand, equipSlot, findItem, removeItem, SLOTS, type Item, type SlotId, type Hand } from './inventory';
+import { resolveLevel } from './skills';
 import { normalizeEffect, effectLabel, withHistory, type Effect } from './items';
 
-export interface ActiveEffect { id: string; sourceItemId: string; sourceName: string; effect: Effect; equipmentBound: boolean }
+export type EffectSourceType = 'item' | 'skill' | 'potion' | 'other';
+/** `sourceItemId` is the id of the source (item, skill, ...); kept under its old name for compatibility. */
+export interface ActiveEffect { id: string; sourceItemId: string; sourceType?: EffectSourceType; sourceName: string; effect: Effect; equipmentBound: boolean }
 export function normalizeActiveEffects(raw: unknown): ActiveEffect[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap(a => {
     const effect = normalizeEffect(a?.effect);
-    return effect && typeof a.id === 'string' && typeof a.sourceItemId === 'string' ? [{ id: a.id, sourceItemId: a.sourceItemId, sourceName: String(a.sourceName ?? 'Эффект'), effect, equipmentBound: a.equipmentBound === true }] : [];
+    return effect && typeof a.id === 'string' && typeof a.sourceItemId === 'string' ? [{ id: a.id, sourceItemId: a.sourceItemId, sourceType: (['skill','potion','other'].includes(a.sourceType) ? a.sourceType : 'item') as EffectSourceType, sourceName: String(a.sourceName ?? 'Эффект'), effect, equipmentBound: a.equipmentBound === true && a.sourceType !== 'skill' }] : [];
   });
 }
 export function wornItems(c: Character): Item[] {
@@ -21,6 +24,7 @@ export function deriveCharacter(c: Character) {
   const secondary = Object.fromEntries(SECONDARY_SKILLS.map(n => [n, c.secondary[n]?.level ?? 0]));
   const worn = wornItems(c);
   const sources = worn.flatMap(i => (i.effects ?? []).filter(automatic).map(effect => ({ source: i.name, effect })));
+  for (const sk of c.skills ?? []) if (sk.definition.type === 'passive' && !sk.draft) for (const effect of resolveLevel(sk.definition, sk.level).filter(automatic)) sources.push({ source: `Навык «${sk.definition.name}»`, effect });
   const boundKeys = new Set<string>();
   const standaloneKeys = new Set<string>();
   for (const a of c.activeEffects ?? []) {
