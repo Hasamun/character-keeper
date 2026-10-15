@@ -54,7 +54,7 @@ describe('skill actions', () => {
     const r = ok(performSkillAction(full, { type: 'apply', skillId: 's' }, 'op'));
     expect(r.character.skills![0]!.level).toBe(5);
     expect(r.character.exhaustion).toBe(10);
-    expect((r.entries[0]!.details.instant as any[])[0].value).toBe(4);
+    expect((r.entries[0]!.details['instant'] as any[])[0].value).toBe(4);
     expect(r.character.activeEffects).toEqual([]);
   });
   it('instant and unspecified effects never become active', () => {
