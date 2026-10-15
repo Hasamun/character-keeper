@@ -16,5 +16,5 @@ describe('skill transfer', () => {
     expect(r.from).toBe(from); expect(r.to.exhaustion).toBe(0); expect(r.to.activeEffects).toEqual([]); expect(r.to.skills[0].history).toHaveLength(1);
   });
   it('payload carries no history or usage', () => expect(Object.keys(transferPayload({ ...sk, history: [{ id: 'h', at: '', text: 'x' }], lastUse: {} } as any, 'teach_current')).sort()).toEqual(['definition', 'level']));
-  it('same hero is rejected', () => expect(transferSkill(hero('a', 'А', [sk]), hero('a', 'А'), 's', 'copy', 'n')).toHaveProperty('error'));
+  it('same hero is rejected', () => expect(transferSkill(hero('a', 'А', [sk]), hero('a', 'А'), 's', 'teach_novice', 'n')).toHaveProperty('error'));
 });
