@@ -67,8 +67,8 @@ function AiPanel({ def, onAccept }: { def: SkillDefinition; onAccept: (d: SkillD
 }
 
 type Step = 'create' | 'develop' | 'review';
-export function SkillEditor({ open, initial, initialDraft, onClose, onSave, compare }: { open: boolean; initial: SkillDefinition | null; initialDraft: boolean; onClose: () => void; onSave: (def: SkillDefinition, draft: boolean, tookCompare: boolean) => void; compare?: { proposal: SkillDefinition; label: string } | null }) {
-  const [cmpOpen, setCmpOpen] = useState(false); const [tookCompare, setTookCompare] = useState(false);
+export function SkillEditor({ open, initial, initialDraft, onClose, onSave, compare }: { open: boolean; initial: SkillDefinition | null; initialDraft: boolean; onClose: () => void; onSave: (def: SkillDefinition, draft: boolean, tookCompare: boolean) => void | Promise<unknown>; compare?: { proposal: SkillDefinition; label: string } | null }) {
+  const [cmpOpen, setCmpOpen] = useState(false); const [tookCompare, setTookCompare] = useState(false); const [saving, setSaving] = useState(false);
   const base = useMemo(() => initial ?? { ...newSkillDefinition('active'), name: '' }, [initial, open]);
   const [def, setDef] = useState(base); const [level, setLevel] = useState(1);
   const [scope, setScope] = useState<'level' | 'rank' | 'all'>('level'); const [list, setList] = useState<Effect[]>([]);
@@ -147,7 +147,7 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave, comp
             {d.changed.map(x => <div key={'c' + x.after.id}>{effectLabel(x.before)} → {effectLabel(x.after)}</div>)}
             {d.costBefore !== d.costAfter && <div>Истощение: {d.costBefore} → {d.costAfter}</div>}</div>)}</div>}
         <label className="flex items-center gap-2"><input type="checkbox" checked={draft} onChange={e => setDraft(e.target.checked)} />Сохранить как черновик (можно неполный)</label>
-        <DialogFooter><Button variant="outline" onClick={() => { if (confirm('Отклонить все изменения и закрыть редактор?')) onClose(); }}>Отклонить</Button><Button variant="outline" onClick={() => setStep('develop')}>Назад</Button><Button onClick={() => onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft, tookCompare)}>Принять и сохранить</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" disabled={saving} onClick={() => { if (confirm('Отклонить все изменения и закрыть редактор?')) onClose(); }}>Отклонить</Button><Button variant="outline" disabled={saving} onClick={() => setStep('develop')}>Назад</Button><Button disabled={saving} onClick={async () => { if (saving) return; setSaving(true); try { await onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft, tookCompare); } finally { setSaving(false); } }}>{saving ? 'Сохраняем…' : initial ? 'Сохранить изменения' : 'Создать навык'}</Button></DialogFooter>
       </div>}
     </DialogContent>
   </Dialog>;

@@ -208,7 +208,7 @@ export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => P
         if (nc && took && compare) nc.skills = (nc.skills ?? []).map(x => (x.id === editSkill!.id ? { ...x, templateVersion: compare.version } : x));
         const p = nc ? save(nc)
           : setSkills([...skills, { id: uid(), definition: def, level: 1, xp: 0, draft, history: [{ id: uid(), at: new Date().toISOString(), text: 'Навык создан вручную' }] }]);
-        void Promise.resolve(p).then(() => { setEditing(null); setCompare(null); toast.success('Навык сохранён'); }).catch(() => undefined);
+        return Promise.resolve(p).then(() => { setEditing(null); setCompare(null); toast.success(editSkill ? 'Навык сохранён' : 'Навык создан'); }).catch(() => { toast.error('Не удалось сохранить навык. Попробуйте ещё раз.'); });
       }} />
   </section>;
 }
