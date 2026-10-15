@@ -69,14 +69,24 @@ export const addCatalogSkill = createServerFn({ method: 'POST' }).middleware([re
     await access(context.supabase, context.userId);
     const [c, s] = await Promise.all([
       context.supabase.from('characters').select('data,updated_at').eq('id', data.characterId).eq('owner_id', context.userId).maybeSingle(),
-      context.supabase.from('skill_catalog').select('name,data').eq('id', data.catalogId).eq('archived', false).maybeSingle(),
+      context.supabase.from('skill_catalog').select('name,data,version').eq('id', data.catalogId).eq('archived', false).maybeSingle(),
     ]);
     if (!c.data) throw new Error('Персонаж недоступен'); if (!s.data) throw new Error('Навык недоступен');
     const character = normalizeCharacter(c.data.data);
-    character.skills = [...(character.skills ?? []), skillFromCatalog(s.data.data, uid(), s.data.name)];
+    character.skills = [...(character.skills ?? []), skillFromCatalog(s.data.data, uid(), s.data.name, undefined, { id: data.catalogId, version: s.data.version })];
     pushLog(character, `Изучен навык из каталога «${s.data.name}»`);
     character.updatedAt = new Date().toISOString();
     const saved = await context.supabase.from('characters').update({ data: asJson(character), updated_at: character.updatedAt }).eq('id', data.characterId).eq('owner_id', context.userId).eq('updated_at', c.data.updated_at).select('updated_at').maybeSingle();
     if (saved.error || !saved.data) throw new Error('Персонаж изменился. Обновите страницу и повторите');
     return { version: saved.data.updated_at, character };
+  });
+
+/** Version history of a catalog template (newest first). Reading never touches personal copies. */
+export const skillCatalogVersions = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(v => z.object({ catalogId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    await access(context.supabase, context.userId);
+    const r = await context.supabase.from('skill_catalog_versions').select('version,name,type,data,created_at').eq('catalog_id', data.catalogId).order('version', { ascending: false }).limit(50);
+    if (r.error) throw new Error('Не удалось загрузить версии');
+    return { rows: r.data ?? [] };
   });

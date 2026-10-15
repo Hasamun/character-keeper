@@ -271,6 +271,8 @@ export function mergeSelectedLevels(current: SkillDefinition, proposal: SkillDef
   const curOrigins = current.levels.map(l => l.origin);
   return buildFromResolved(takeMeta ? proposal : current, a.map((x, i) => (selected.has(i + 1) ? b[i]! : x)), a.map((_, i) => (selected.has(i + 1) ? 'ai' : curOrigins[i] === 'empty' ? 'manual' : curOrigins[i]!)));
 }
+/** Short balance reference for AI: key levels with resolved numeric effects and cost. */
+export const compactSkillExample = (d: SkillDefinition) => ({ name: d.name, type: d.type, levels: [1, 5, 10, 15, 20, 25].map(level => ({ level, cost: d.type === 'active' ? costAt(d, level) : null, effects: resolveLevel(d, level).map(e => ({ kind: e.kind, target: e.target, value: e.value, ...(e.lifecycle ? { lifecycle: e.lifecycle } : {}) })) })) });
 /** Per-level pick: 'all' takes the whole proposed level (effects + cost); a list takes only those effect ids (added, changed or removed). */
 export type LevelPick = 'all' | string[];
 export function mergeSelection(current: SkillDefinition, proposal: SkillDefinition, picks: Record<number, LevelPick>, takeMeta: boolean, origin: PatchOrigin = 'ai'): SkillDefinition {
