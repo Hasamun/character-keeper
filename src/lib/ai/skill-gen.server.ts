@@ -6,7 +6,7 @@ import type { AiSkillDraft } from '@/lib/rules/skills';
 
 const effect = z.object({
   key: z.string(), kind: z.enum(['stat', 'skill', 'ac', 'attack', 'damage', 'resistance', 'vulnerability', 'extra_damage', 'condition', 'ability']),
-  target: z.string(), value: z.number().int(), automation: z.enum(['auto', 'confirm', 'manual']),
+  target: z.string(), value: z.number().int(), automation: z.enum(['auto', 'confirm', 'manual']), lifecycle: z.enum(['instant', 'sustained', 'gm']),
   damageType: z.string().nullable(), condition: z.string().nullable(), duration: z.string().nullable(), description: z.string().nullable(),
 });
 export const draftSchema = z.object({
@@ -21,15 +21,17 @@ const RULES = `Ты помогаешь мастеру домашней наст�
 kind: stat (target — одна из: Сила, Ловкость, Телосложение, Интеллект, Мудрость, Харизма или как указано), skill (target — вторичный навык), ac, attack, damage, resistance, vulnerability, extra_damage, condition, ability. Для ac/attack/damage target = "".
 automation: auto — только простые числовые бонусы; confirm — числовые, но ситуативные; manual — игровые решения мастера (способности, состояния, условия). Никаких бросков кубиков, таймеров и автоматического восстановления.
 Для active указывай exhaustionCost (целое ≥0) — стоимость истощения при применении, обычно растущую с рангом; null = как на прошлом уровне. Для passive exhaustionCost = null.
+lifecycle: instant — разовый результат применения (урон, лечение, рывок); sustained — длящееся состояние героя после применения (бафф/дебафф до ручного завершения); gm — решает ведущий. Для пассивных навыков используй sustained только для постоянных бонусов. Не путай lifecycle с automation.
+Если даны примеры навыков из каталога — используй их как ориентир баланса (величины бонусов и истощения по рангам), но не копируй.
 Значения умеренные и сбалансированные; рост силы плавный, заметные скачки — на 5, 10, 15, 20, 25 уровнях.`;
 
-export async function generateSkillDraft(apiKey: string, prompt: string, type: 'active' | 'passive' | null, current: unknown | null, signal?: AbortSignal): Promise<AiSkillDraft> {
+export async function generateSkillDraft(apiKey: string, prompt: string, type: 'active' | 'passive' | null, current: unknown | null, examples: unknown[] = [], signal?: AbortSignal): Promise<AiSkillDraft> {
   const runId = createLovableAiGatewayRunIdFetch();
   const provider = createOpenAI({ baseURL: 'https://ai.gateway.lovable.dev/v1', apiKey, headers: { 'Lovable-API-Key': apiKey, 'X-Lovable-AIG-SDK': 'vercel-ai-sdk' }, fetch: runId.fetch });
   const result = streamText({
     model: provider.responses('openai/gpt-6-astra'),
     instructions: RULES,
-    prompt: `${current ? `Текущая версия навыка (развёрнутые уровни, JSON):\n${JSON.stringify(current)}\n\nДоработай её по запросу, сохраняя key существующих эффектов.\n` : ''}${type ? `Тип навыка: ${type}.\n` : ''}Запрос: ${prompt}`,
+    prompt: `${examples.length ? `Похожие навыки из каталога (ориентир баланса, JSON):\n${JSON.stringify(examples)}\n\n` : ''}${current ? `Текущая версия навыка (развёрнутые уровни, JSON):\n${JSON.stringify(current)}\n\nДоработай её по запросу, сохраняя key существующих эффектов.\n` : ''}${type ? `Тип навыка: ${type}.\n` : ''}Запрос: ${prompt}`,
     output: Output.object({ schema: draftSchema }),
     ...(signal ? { abortSignal: signal } : {}),
     providerOptions: { openai: { forceReasoning: true, reasoningEffort: 'medium', reasoningSummary: 'auto', store: false, include: ['reasoning.encrypted_content'] } },
