@@ -19,7 +19,7 @@ export function SharedSkills({ id, version, raw, exhaustion, editable, onDone }:
     catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); }
     finally { setBusy(false); onDone(); }
   };
-  return <section className="grid gap-3">
+  return <section className="wrap-safe grid gap-3">
     <p className="text-sm">Истощение: <b>{exhaustion}</b> <span className="text-muted-foreground">({exhaustionBand(exhaustion).label})</span></p>
     {skills.length === 0 && <p className="text-sm text-muted-foreground">У героя нет навыков</p>}
     {skills.map(s => { const d = s.definition, need = xpToNext(d.type, s.level), cost = costAt(d, s.level); return <div key={s.id} className="panel grid gap-2 p-3 text-sm">
