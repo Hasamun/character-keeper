@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { newSkillDefinition, performSkillAction, normalizeSkills } from './skills';
+import { newSkillDefinition, performSkillAction, normalizeSkills, xpToNext } from './skills';
 import { normalizeCharacter } from '../storage';
 import { deriveCharacter } from './derived';
 import type { Character } from './index';
 
 function hero(type: 'active' | 'passive' = 'active', exhaustion = 0): Character {
   const d = newSkillDefinition(type); d.name = 'Удар'; d.levels[0]!.exhaustionCost = 10; d.levels[1]!.exhaustionCost = 12;
-  d.levels[0]!.ops = [{ op: 'add', effect: { id: 'ac', kind: 'ac', target: '', value: 1, automation: 'auto' } }];
-  d.levels[1]!.ops = [{ op: 'update', effect: { id: 'ac', kind: 'ac', target: '', value: 2, automation: 'auto' } }];
+  d.levels[0]!.ops = [{ op: 'add', effect: { id: 'ac', kind: 'ac', target: '', value: 1, automation: 'auto', lifecycle: 'sustained' } }];
+  d.levels[1]!.ops = [{ op: 'update', effect: { id: 'ac', kind: 'ac', target: '', value: 2, automation: 'auto', lifecycle: 'sustained' } }];
   return normalizeCharacter({ name: 'Т', exhaustion, skills: [{ id: 's', definition: d, level: 1, xp: 0 }] });
 }
 const ok = (r: ReturnType<typeof performSkillAction>) => { if ('error' in r) throw new Error(r.error); return r; };
@@ -44,6 +44,28 @@ describe('skill actions', () => {
   });
   it('rest lowers exhaustion, not below zero', () => {
     expect(ok(performSkillAction(hero('active', 30), { type: 'exhaustion', delta: -50, reason: '', kind: 'rest' }, '1')).character.exhaustion).toBe(0);
+  });
+  it('level 4 use applies level-4 params, then levels up to 5', () => {
+    const d = newSkillDefinition('active'); d.name = 'Удар'; d.levels[0]!.exhaustionCost = 10; d.levels[4]!.exhaustionCost = 50;
+    d.levels[0]!.ops = [{ op: 'add', effect: { id: 'dmg', kind: 'extra_damage', target: '', value: 4, automation: 'manual', lifecycle: 'instant' } }];
+    d.levels[4]!.ops = [{ op: 'update', effect: { id: 'dmg', kind: 'extra_damage', target: '', value: 5, automation: 'manual', lifecycle: 'instant' } }];
+
+    const lv = normalizeCharacter({ name: 'Т', skills: [{ id: 's', definition: d, level: 4, xp: 0 }] }); const full = { ...lv, skills: [{ ...lv.skills![0]!, xp: xpToNext('active', 4)! - 1 }] };
+    const r = ok(performSkillAction(full, { type: 'apply', skillId: 's' }, 'op'));
+    expect(r.character.skills![0]!.level).toBe(5);
+    expect(r.character.exhaustion).toBe(10);
+    expect((r.entries[0]!.details.instant as any[])[0].value).toBe(4);
+    expect(r.character.activeEffects).toEqual([]);
+  });
+  it('instant and unspecified effects never become active', () => {
+    const d = newSkillDefinition('active'); d.name = 'И';
+    d.levels[0]!.ops = [{ op: 'add', effect: { id: 'a', kind: 'ac', target: '', value: 1, automation: 'auto', lifecycle: 'instant' } }, { op: 'add', effect: { id: 'b', kind: 'ac', target: '', value: 1, automation: 'auto' } }];
+    const c = normalizeCharacter({ name: 'Т', skills: [{ id: 's', definition: d, level: 1, xp: 0 }] });
+    expect(ok(performSkillAction(c, { type: 'apply', skillId: 's' }, '1')).character.activeEffects).toEqual([]);
+  });
+  it('old stored non-sustained skill effects are dropped on load, item effects kept', () => {
+    const c = normalizeCharacter({ name: 'Т', activeEffects: [{ id: 'x', sourceItemId: 's', sourceType: 'skill', sourceName: 'n', effect: { id: 'e', kind: 'ac', target: '', value: 1, automation: 'auto' } }, { id: 'y', sourceItemId: 'i', sourceName: 'n', effect: { id: 'e', kind: 'ac', target: '', value: 1, automation: 'auto' } }] });
+    expect(c.activeEffects!.map(a => a.id)).toEqual(['y']);
   });
   it('lastUse survives normalization', () => {
     const c = ok(performSkillAction(hero(), { type: 'apply', skillId: 's' }, 'op1')).character;
