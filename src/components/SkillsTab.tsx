@@ -15,8 +15,8 @@ import { EFFECT_KIND_LABELS, effectLabel, type EffectKind } from '@/lib/rules/it
 import { SkillEditor } from '@/components/SkillEditor';
 import { SkillCatalog } from '@/components/SkillCatalog';
 import { SkillTransferDialog } from '@/components/SkillTransferDialog';
-import { submitSkill } from '@/lib/skill-catalog.functions';
-import { commitDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, SKILL_RANKS, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
+import { skillCatalogVersions, submitSkill } from '@/lib/skill-catalog.functions';
+import { commitDefinition, normalizeSkillDefinition, type SkillDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, SKILL_RANKS, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
 import { skillAction } from '@/lib/skills.functions';
 import { useCharacters } from '@/lib/characters-store';
 
@@ -116,7 +116,7 @@ function SkillDetails({ c, s, run, busy, open, onClose, onRestore }: { c: Charac
   </Dialog>;
 }
 
-function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit, onRestore }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean; onEdit: () => void; onRestore: (i: number) => void }) {
+function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit, onRestore, onCompare }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean; onEdit: () => void; onCompare: () => void; onRestore: (i: number) => void }) {
   const [details, setDetails] = useState(false); const [confirm, setConfirm] = useState(false);
   const [transfer, setTransfer] = useState(false); const send = useServerFn(submitSkill); const [sending, setSending] = useState(false);
   const [del, setDel] = useState(false); const [fullDesc, setFullDesc] = useState(false);

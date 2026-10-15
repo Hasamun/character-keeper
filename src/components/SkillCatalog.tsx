@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Character } from '@/lib/rules';
 import { effectLabel } from '@/lib/rules/items';
-import { costAt, levelInRank, normalizeSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL } from '@/lib/rules/skills';
+import { diffLevels, costAt, levelInRank, normalizeSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL } from '@/lib/rules/skills';
 import { accountInfo } from '@/lib/catalog.functions';
-import { addCatalogSkill, archiveSkill, listSkillCatalog, listSkillSubmissions, reviewSkill } from '@/lib/skill-catalog.functions';
+import { skillCatalogVersions, addCatalogSkill, archiveSkill, listSkillCatalog, listSkillSubmissions, reviewSkill } from '@/lib/skill-catalog.functions';
 import { useCharacters } from '@/lib/characters-store';
 
 const STATUS: Record<string, string> = { pending: 'На модерации', approved: 'Одобрено', rejected: 'Отклонено' };
@@ -23,6 +23,19 @@ function SkillPreview({ raw }: { raw: unknown }) {
     <div className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Уровень {lv} · {rankOf(lv)} {levelInRank(lv)}{d.type === 'active' && ` · истощение ${costAt(d, lv)}`}</div>
       {resolveLevel(d, lv).map(e => <div key={e.id}>{effectLabel(e)}{e.description ? ` — ${e.description}` : ''}</div>)}{resolveLevel(d, lv).length === 0 && <div className="text-muted-foreground">Эффектов нет</div>}</div>
   </div>;
+}
+
+function CatalogVersions({ id }: { id: string }) {
+  const list = useServerFn(skillCatalogVersions); const [open, setOpen] = useState(false); const [pick, setPick] = useState<number | null>(null);
+  const q = useQuery({ queryKey: ['skill-cat-versions', id], queryFn: () => list({ data: { catalogId: id } }), enabled: open });
+  const rows = q.data?.rows ?? []; const latest = rows[0]; const chosen = rows.find(r => r.version === pick);
+  const diffs = latest && chosen ? diffLevels(normalizeSkillDefinition(chosen.data), normalizeSkillDefinition(latest.data)) : [];
+  return <details className="mt-2 text-sm" onToggle={e => setOpen((e.target as HTMLDetailsElement).open)}><summary className="cursor-pointer text-primary">История версий</summary>
+    {q.isLoading ? <p className="text-muted-foreground">Загрузка…</p> : <div className="mt-2 grid gap-1">{rows.map(r => <button key={r.version} className={cn('flex flex-wrap justify-between gap-2 rounded border px-2 py-1 text-left', pick === r.version ? 'border-primary' : 'border-border')} onClick={() => setPick(pick === r.version ? null : r.version)}><span>Версия {r.version}{r === latest ? ' (текущая)' : ''}</span><span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString('ru-RU')}</span></button>)}
+      {chosen && chosen !== latest && <div className="rounded-md border border-border p-2"><div className="mb-1 font-semibold">Версия {chosen.version} → {latest!.version}</div>{diffs.length === 0 && <p className="text-muted-foreground">Уровни не менялись</p>}
+        {diffs.map(d => <div key={d.level} className="break-words"><span className="text-xs text-muted-foreground">Ур. {d.level}: </span>{d.added.map(e => <span key={'a' + e.id} className="text-primary">+ {effectLabel(e)}; </span>)}{d.removed.map(e => <span key={'r' + e.id} className="text-destructive">− {effectLabel(e)}; </span>)}{d.changed.map(x => <span key={'c' + x.after.id}>{effectLabel(x.before)} → {effectLabel(x.after)}; </span>)}{d.costBefore !== d.costAfter && <span>истощение {d.costBefore} → {d.costAfter}</span>}</div>)}</div>}
+    </div>}
+  </details>;
 }
 
 function Moderation() {
@@ -81,7 +94,7 @@ export function SkillCatalog({ c }: { c: Character }) {
             <div className="min-w-0"><b className="break-words">{r.name}</b> <span className="text-xs text-muted-foreground">{r.type === 'active' ? 'Активный' : 'Пассивный'} · версия {r.version}{r.mine ? ' · ваш' : ''}</span></div></button>
           <Button size="sm" disabled={busy} onClick={() => void addToHero(r.id, r.name)}>Добавить герою</Button>
         </div>
-        {open === r.id && <div className="mt-3 border-t border-border pt-3"><SkillPreview raw={r.data} />
+        {open === r.id && <div className="mt-3 border-t border-border pt-3"><SkillPreview raw={r.data} /><CatalogVersions id={r.id} />
           {me.data?.admin && <Button className="mt-2 text-destructive" size="sm" variant="outline" onClick={async () => { const reason = prompt('Причина снятия с каталога'); if (reason === null) return; try { await archive({ data: { id: r.id, reason } }); toast.success('Навык убран из каталога'); void qc.invalidateQueries({ queryKey: ['skill-catalog'] }); } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); } }}>Убрать из каталога</Button>}</div>}
       </div>)}
       {cat.hasNextPage && <Button variant="outline" disabled={cat.isFetchingNextPage} onClick={() => void cat.fetchNextPage()}>{cat.isFetchingNextPage ? 'Загрузка…' : 'Показать ещё'}</Button>}</>}
