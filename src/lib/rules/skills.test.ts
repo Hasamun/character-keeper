@@ -47,7 +47,7 @@ describe('skills', () => {
   it('passive skill bonus stacks with other sources; skill effects survive equipment sync', () => {
     const d = newSkillDefinition('passive'); d.name = 'Стойкая кожа'; d.levels[0]!.ops = [{ op: 'add', effect: fx('a', 2) }];
     const c = normalizeCharacter({ name: 'Т', skills: [{ id: 's', definition: d, level: 1, xp: 0 }],
-      activeEffects: [{ id: 'e', sourceItemId: 'sk2', sourceType: 'skill', sourceName: 'Щит', effect: fx('z', 1), equipmentBound: true }] });
+      activeEffects: [{ id: 'e', sourceItemId: 'sk2', sourceType: 'skill', sourceName: 'Щит', effect: { ...fx('z', 1), lifecycle: 'sustained' }, equipmentBound: true }] });
     const base = deriveCharacter(normalizeCharacter({ name: 'Т' })).ac;
     expect(deriveCharacter(c).ac).toBe(base + 3);
     expect(reconcileEffects(c).activeEffects).toHaveLength(1);
