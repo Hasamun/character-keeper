@@ -315,7 +315,7 @@ export function transferPayload(s: SkillInstance, mode: TransferMode): SkillTran
 export function receiveSkill(to: Character, raw: unknown, newId: string, fromName: string, at = new Date().toISOString()): { to: Character; name: string } {
   const p = (raw && typeof raw === 'object' ? raw : {}) as Partial<SkillTransferPayload>;
   const definition = normalizeSkillDefinition(p.definition);
-  const level = Math.min(MAX_SKILL_LEVEL, Math.max(1, Math.trunc(Number(p.level) || 1)));
+  const level = Math.min(SKILL_MAX_LEVEL, Math.max(1, Math.trunc(Number(p.level) || 1)));
   const s: SkillInstance = { id: newId, definition, level, xp: 0, draft: false, history: [{ id: `${at}:t`, at, text: `Изучен у «${fromName}»` }],
     ...(typeof p.templateId === 'string' ? { templateId: p.templateId } : {}), ...(typeof p.templateVersion === 'number' ? { templateVersion: p.templateVersion } : {}) };
   return { to: { ...to, skills: [...(to.skills ?? []), s] }, name: definition.name };
