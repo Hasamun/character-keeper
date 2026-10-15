@@ -10,6 +10,8 @@ export function normalizeActiveEffects(raw: unknown): ActiveEffect[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap(a => {
     const effect = normalizeEffect(a?.effect);
+    // Skill entries are only ongoing states when explicitly sustained; old/instant ones were false "active" markers.
+    if (a.sourceType === 'skill' && effect?.lifecycle !== 'sustained') return [];
     return effect && typeof a.id === 'string' && typeof a.sourceItemId === 'string' ? [{ id: a.id, sourceItemId: a.sourceItemId, sourceType: (['skill','potion','other'].includes(a.sourceType) ? a.sourceType : 'item') as EffectSourceType, sourceName: String(a.sourceName ?? 'Эффект'), effect, equipmentBound: a.equipmentBound === true && a.sourceType !== 'skill' }] : [];
   });
 }

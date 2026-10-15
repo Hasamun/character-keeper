@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { uid, PRIMARY_STAT_NAMES, SECONDARY_SKILLS } from '@/lib/rules';
-import { EFFECT_KIND_LABELS, effectLabel, type Effect, type EffectKind, type Automation } from '@/lib/rules/items';
+import { EFFECT_KIND_LABELS, LIFECYCLE_LABELS, effectLabel, type Effect, type EffectKind, type Automation, type EffectLifecycle } from '@/lib/rules/items';
 import { useServerFn } from '@tanstack/react-start';
 import { generateSkill } from '@/lib/skill-ai.functions';
 import { aiDraftToDefinition, mergeSelectedLevels, resolvedLevels, type AiSkillDraft } from '@/lib/rules/skills';
@@ -27,6 +27,7 @@ function EffectRow({ e, onChange, onRemove }: { e: Effect; onChange: (e: Effect)
       <Button size="icon" variant="outline" aria-label="Удалить эффект" onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
     </div>
     <div className="grid gap-2 sm:grid-cols-2">
+      <select aria-label="Тип действия" className={cn(sel, !e.lifecycle && 'border-destructive')} value={e.lifecycle ?? ''} onChange={x => set({ lifecycle: (x.target.value || undefined) as EffectLifecycle | undefined })}><option value="">Уточните тип действия…</option>{Object.entries(LIFECYCLE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
       <select aria-label="Применение" className={sel} value={e.automation} onChange={x => set({ automation: x.target.value as Automation })}>{Object.entries(AUTO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
       {['resistance', 'vulnerability', 'extra_damage', 'damage'].includes(e.kind) && <Input placeholder="Тип урона" value={e.damageType ?? ''} onChange={x => set({ damageType: x.target.value || undefined })} />}
       <Input placeholder="Условие (необязательно)" value={e.condition ?? ''} onChange={x => set({ condition: x.target.value || undefined })} />
