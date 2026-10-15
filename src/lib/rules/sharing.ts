@@ -2,17 +2,19 @@ import type { Character } from './index';
 
 export const SHARE_SECTIONS = ['bio', 'primary', 'secondary', 'inventory', 'notes', 'history', 'skills'] as const;
 export type ShareSection = typeof SHARE_SECTIONS[number];
-export type Permission = 'none' | 'read' | 'edit';
+/** `use` exists only for skills: apply active skills without editing definitions or XP. */
+export type Permission = 'none' | 'read' | 'use' | 'edit';
 export type Permissions = Record<ShareSection, Permission>;
 export const SECTION_LABELS: Record<ShareSection, string> = { bio: 'Основные сведения', primary: 'Характеристики', secondary: 'Вторичные навыки и опыт', inventory: 'Инвентарь', notes: 'Заметки', history: 'История', skills: 'Навыки (умения)' };
 export function normalizePermissions(raw: unknown): Permissions {
   const r = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
-  return Object.fromEntries(SHARE_SECTIONS.map(k => [k, r[k] === 'edit' && k !== 'history' ? 'edit' : r[k] === 'read' || r[k] === 'edit' && k === 'history' ? 'read' : 'none'])) as Permissions;
+  return Object.fromEntries(SHARE_SECTIONS.map(k => [k, r[k] === 'edit' && k !== 'history' ? 'edit' : r[k] === 'use' && k === 'skills' ? 'use' : r[k] === 'read' || r[k] === 'use' || r[k] === 'edit' ? 'read' : 'none'])) as Permissions;
 }
 export const hasPermission = (p: Permissions, section: ShareSection, edit = false) => edit ? p[section] === 'edit' : p[section] !== 'none';
 export const ownsImagePath = (path: string, ownerId: string) => path.startsWith(`${ownerId}/`) && !path.includes('..');
 export const canDeriveShared = (p: Permissions) => ['bio', 'primary', 'secondary', 'inventory', 'skills'].every(k => p[k as ShareSection] !== 'none');
-export function canShareAction(p: Permissions, action: 'primaryExp' | 'secondaryExp' | 'inventory' | 'use' | 'notes' | 'bio' | 'skills') {
+export function canShareAction(p: Permissions, action: 'primaryExp' | 'secondaryExp' | 'inventory' | 'use' | 'notes' | 'bio' | 'skills' | 'skillsApply') {
+  if (action === 'skillsApply') return p.skills === 'use' || p.skills === 'edit';
   if (action === 'secondaryExp') return p.primary === 'edit' && p.secondary === 'edit';
   if (action === 'primaryExp') return p.primary === 'edit';
   return p[action === 'use' ? 'inventory' : action] === 'edit';
