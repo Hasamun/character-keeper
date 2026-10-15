@@ -66,7 +66,7 @@ export function SkillsSummary({ c }: { c: Character }) {
   const skills = c.skills ?? [];
   const active = (c.activeEffects ?? []).filter(a => a.sourceType === 'skill');
   if (!skills.length && !(c.exhaustion ?? 0)) return null;
-  return <section className="mb-5 grid gap-2 border-b border-border pb-5">
+  return <section className="wrap-safe mb-5 grid gap-2 border-b border-border pb-5">
     <h2 className="text-lg">Навыки</h2>
     <ExhaustionPanel c={c} compact />
     <p className="text-sm text-muted-foreground">Навыков: {skills.length} · действующих эффектов навыков: {active.length}</p>
@@ -77,13 +77,13 @@ export function SkillsSummary({ c }: { c: Character }) {
 function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit, onRestore }: { c: Character; s: SkillInstance; run: Run; busy: boolean; onMove: (d: -1 | 1) => void; onCopy: () => void; onDelete: () => void; canMove: boolean; onEdit: () => void; onRestore: (i: number) => void }) {
   const [open, setOpen] = useState(false); const [confirm, setConfirm] = useState(false); const [viewLevel, setViewLevel] = useState(s.level);
   const [transfer, setTransfer] = useState(false); const send = useServerFn(submitSkill); const [sending, setSending] = useState(false);
-  const [xp, setXp] = useState(''); const [reason, setReason] = useState(''); const [del, setDel] = useState(false);
+  const [xp, setXp] = useState(''); const [reason, setReason] = useState(''); const [del, setDel] = useState(false); const [fullDesc, setFullDesc] = useState(false);
   const d = s.definition, need = xpToNext(d.type, s.level), cost = costAt(d, s.level), effects = resolveLevel(d, s.level);
   const ex = c.exhaustion ?? 0;
   const applyNow = () => run({ type: 'apply', skillId: s.id }).then(ok => ok && toast.success(`«${d.name}» применён`));
   const lu = s.lastUse, canUndo = !!lu && lu.after.level === s.level && lu.after.xp === s.xp && ex >= lu.cost;
-  return <div className="panel p-3">
-    <div className="flex items-start gap-2">
+  return <div className="wrap-safe panel p-3">
+    <div className="flex flex-wrap items-start gap-2">
       <button className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         <ChevronDown className={cn('mt-1 h-4 w-4 shrink-0 transition', open && 'rotate-180')} />
         <div className="min-w-0 flex-1">
@@ -94,6 +94,7 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit,
       </button>
       {d.type === 'active' && <Button size="sm" disabled={busy} onClick={() => needsExhaustionConfirm(ex, cost) ? setConfirm(true) : void applyNow()}>Применить</Button>}
     </div>
+    {!open && d.description && <div className="mt-1 pl-6 text-xs text-muted-foreground"><p className={cn('whitespace-pre-wrap', !fullDesc && 'line-clamp-3')}>{d.description}</p>{d.description.length > 140 && <button className="text-primary underline" onClick={() => setFullDesc(v => !v)}>{fullDesc ? 'Свернуть' : 'Показать полностью'}</button>}</div>}
     {open && <div className="mt-3 grid gap-3 border-t border-border pt-3 text-sm">
       {d.description && <p className="whitespace-pre-wrap">{d.description}</p>}
       <div><div className="mb-1 font-semibold">Уровни</div>
@@ -139,7 +140,7 @@ export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => P
   const setSkills = (next: SkillInstance[], extra: Partial<Character> = {}) => save({ ...c, ...extra, skills: next }).catch(() => undefined);
   const move = (id: string, d: -1 | 1) => { const i = skills.findIndex(s => s.id === id), j = i + d; if (i < 0 || j < 0 || j >= skills.length) return; const n = [...skills]; [n[i], n[j]] = [n[j]!, n[i]!]; void setSkills(n); };
   const skillEffects = (c.activeEffects ?? []).filter(a => a.sourceType === 'skill');
-  return <section className="grid gap-4">
+  return <section className="wrap-safe grid gap-4">
     <div className="flex gap-2">{([['mine', 'Мои навыки'], ['catalog', 'Каталог']] as const).map(([k, l]) => <Button key={k} variant={sub === k ? 'default' : 'outline'} size="sm" onClick={() => setSub(k)}>{l}</Button>)}</div>
     {sub === 'catalog' ? <SkillCatalog c={c} /> : <>
       <div className="panel grid gap-3 p-3"><ExhaustionPanel c={c} />

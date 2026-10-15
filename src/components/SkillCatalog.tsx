@@ -17,7 +17,7 @@ const STATUS: Record<string, string> = { pending: 'На модерации', app
 
 function SkillPreview({ raw }: { raw: unknown }) {
   const d = normalizeSkillDefinition(raw); const [lv, setLv] = useState(1);
-  return <div className="grid gap-2 text-sm">
+  return <div className="wrap-safe grid gap-2 text-sm">
     {d.description && <p className="whitespace-pre-wrap">{d.description}</p>}
     <div className="flex flex-wrap gap-1">{Array.from({ length: SKILL_MAX_LEVEL }, (_, i) => i + 1).map(l => <button key={l} onClick={() => setLv(l)} className={cn('h-7 w-7 rounded border text-xs', l === lv ? 'border-primary bg-primary/15 text-primary' : 'border-border')}>{l}</button>)}</div>
     <div className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Уровень {lv} · {rankOf(lv)} {levelInRank(lv)}{d.type === 'active' && ` · истощение ${costAt(d, lv)}`}</div>
@@ -35,7 +35,7 @@ function Moderation() {
     void qc.invalidateQueries({ queryKey: ['skill-subs'] }); void qc.invalidateQueries({ queryKey: ['skill-catalog'] });
   };
   if (!q.data?.rows.length) return null;
-  return <div className="panel grid gap-2 p-3"><b>Модерация навыков ({q.data.count})</b>
+  return <div className="wrap-safe panel grid gap-2 p-3"><b>Модерация навыков ({q.data.count})</b>
     {q.data.rows.map(r => { const d = normalizeSkillDefinition(r.data); return <div key={r.id} className="rounded-md border border-border p-2 text-sm">
       <button className="flex w-full items-center gap-2 text-left" onClick={() => setOpen(open === r.id ? null : r.id)}><ChevronDown className={cn('h-4 w-4', open === r.id && 'rotate-180')} /><b>{d.name}</b><span className="text-xs text-muted-foreground">{d.type === 'active' ? 'Активный' : 'Пассивный'}{r.catalog_id ? ' · правка опубликованного' : ''}</span></button>
       {open === r.id && <div className="mt-2"><SkillPreview raw={r.data} /></div>}
@@ -66,7 +66,7 @@ export function SkillCatalog({ c }: { c: Character }) {
     catch (e) { const m = e instanceof Error ? e.message : 'Ошибка'; toast.error(m); if (m.includes('изменился')) await store.refresh().catch(() => undefined); }
     finally { setBusy(false); }
   };
-  return <div className="grid gap-3">
+  return <div className="wrap-safe grid gap-3">
     {me.data?.admin && <Moderation />}
     <div className="flex flex-wrap gap-2">
       <Input className="min-w-40 flex-1" value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск в каталоге" />

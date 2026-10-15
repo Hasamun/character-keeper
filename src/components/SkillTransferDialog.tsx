@@ -26,7 +26,7 @@ export function SkillTransferDialog({ c, s, open, onClose }: { c: Character; s: 
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); }
     finally { setBusy(false); await store.refresh().catch(() => undefined); }
   };
-  return <Dialog open={open} onOpenChange={o => !o && onClose()}><DialogContent><DialogHeader><DialogTitle>Передать или обучить: {s.definition.name}</DialogTitle><DialogDescription>Получатель — ваш другой герой. Копия независима от исходного навыка.</DialogDescription></DialogHeader>
+  return <Dialog open={open} onOpenChange={o => !o && onClose()}><DialogContent className="wrap-safe"><DialogHeader><DialogTitle>Передать или обучить: {s.definition.name}</DialogTitle><DialogDescription>Получатель — ваш другой герой. Копия независима от исходного навыка.</DialogDescription></DialogHeader>
     {others.length === 0 ? <p className="text-sm text-muted-foreground">Нет других героев.</p> : <div className="grid gap-3 text-sm">
       <select aria-label="Получатель" className="h-9 rounded-md border border-border bg-background px-2" value={to} onChange={e => setTo(e.target.value)}><option value="">Выберите героя…</option>{others.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
       {(Object.keys(TRANSFER_LABELS) as TransferMode[]).map(m => <label key={m} className="flex items-center gap-2"><input type="radio" name="mode" checked={mode === m} onChange={() => setMode(m)} />{TRANSFER_LABELS[m]}{m === 'teach_current' && ` — ур. ${s.level}`}</label>)}

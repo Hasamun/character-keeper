@@ -103,7 +103,7 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { 
     setReview(true);
   };
   return <Dialog open={open} onOpenChange={o => !o && onClose()}>
-    <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{initial ? `Редактор: ${initial.name}` : 'Новый навык'}</DialogTitle></DialogHeader>
+    <DialogContent className="wrap-safe max-h-[92dvh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{initial ? `Редактор: ${initial.name}` : 'Новый навык'}</DialogTitle></DialogHeader>
       {review ? <div className="grid gap-3 text-sm">
         <div className="font-semibold">Проверьте изменения перед сохранением</div>
         {diffs.length === 0 ? <p className="text-muted-foreground">Изменений по уровням нет{initial && (base.name !== def.name || base.description !== def.description || base.type !== def.type) ? ' (изменены название, тип или описание)' : ''}.</p>

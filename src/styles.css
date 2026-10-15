@@ -141,6 +141,11 @@
   h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.02em; }
 }
 
+@utility wrap-safe {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  & :where(*) { min-width: 0; }
+}
 @utility panel {
   background: var(--gradient-panel);
   border: 1px solid var(--color-border);
