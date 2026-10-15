@@ -85,6 +85,13 @@
       "when": 1792056782965,
       "tag": "0011_skill_offers_and_use_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792057090008,
+      "tag": "0012_skill_catalog_versions",
+      "breakpoints": true
     }
   ]
 }
