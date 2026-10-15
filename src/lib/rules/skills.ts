@@ -150,7 +150,7 @@ export type SkillAction =
 export interface JournalEntry { skillId: string | null; action: string; details: Record<string, unknown>; compensates?: string | undefined }
 
 const skillEffectsFor = (c: Character, s: SkillInstance): ActiveEffect[] =>
-  resolveLevel(s.definition, s.level).map(effect => ({ id: `${s.id}:${effect.id}`, sourceItemId: s.id, sourceType: 'skill', sourceName: s.definition.name, effect: { ...effect }, equipmentBound: false }));
+  resolveLevel(s.definition, s.level).filter(e => e.lifecycle === 'sustained').map(effect => ({ id: `${s.id}:${effect.id}`, sourceItemId: s.id, sourceType: 'skill', sourceName: s.definition.name, effect: { ...effect }, equipmentBound: false }));
 const otherEffects = (c: Character, skillId: string) => (c.activeEffects ?? []).filter(a => !(a.sourceType === 'skill' && a.sourceItemId === skillId));
 const hasActive = (c: Character, skillId: string) => (c.activeEffects ?? []).some(a => a.sourceType === 'skill' && a.sourceItemId === skillId);
 const rec = (s: SkillInstance, at: string, text: string) => [...s.history, { id: `${at}:${s.history.length}`, at, text }].slice(-100);
@@ -171,13 +171,18 @@ export function performSkillAction(c: Character, a: SkillAction, opId: string, a
   if (a.type === 'apply') {
     if (s.definition.type !== 'active') return { error: 'Пассивный навык нельзя применить' };
     if (s.draft) return { error: 'Черновик нельзя применить' };
+    // 1–5: everything this use does comes from the CURRENT level, before any XP is granted.
     const cost = costAt(s.definition, s.level);
+    const instant = resolveLevel(s.definition, s.level).filter(e => e.lifecycle !== 'sustained').map(e => ({ ...e }));
+    const applied = [...otherEffects(c, s.id), ...skillEffectsFor(c, s)];
+    // 6–7: then +1 XP and level-up.
     const r = addSkillXp('active', s.level, s.xp, s.level >= SKILL_MAX_LEVEL ? 0 : 1);
     const ns: SkillInstance = { ...s, level: r.level, xp: r.xp, lastUse: { opId, at, before: { level: s.level, xp: s.xp }, after: { level: r.level, xp: r.xp }, cost, prevEffects: (c.activeEffects ?? []).filter(x => x.sourceType === 'skill' && x.sourceItemId === s.id) } };
-    ns.history = rec(ns, at, `Применение: −${cost} истощения${r.level > s.level ? `, новый уровень ${r.level}` : ''}`);
-    const next = { ...c, skills: put(ns), exhaustion: exhaustion + cost };
-    next.activeEffects = [...otherEffects(c, s.id), ...skillEffectsFor(next, ns)];
-    return { character: next, entries: [{ skillId: s.id, action: 'apply', details: { cost, fromLevel: s.level, toLevel: r.level, fromXp: s.xp, toXp: r.xp } }], logText: `Применён навык «${name}» (истощение +${cost})${r.level > s.level ? `, уровень ${r.level}` : ''}` };
+    ns.history = rec(ns, at, `Применение (ур. ${s.level}): −${cost} истощения${r.level > s.level ? `, новый уровень ${r.level}` : ''}`);
+    const next = { ...c, skills: put(ns), exhaustion: exhaustion + cost, activeEffects: applied };
+    // Ongoing states are updated in place to the new level (no second copy); instant results stay at the used level.
+    if (r.level !== s.level) next.activeEffects = [...otherEffects(c, s.id), ...skillEffectsFor(next, ns)];
+    return { character: next, entries: [{ skillId: s.id, action: 'apply', details: { cost, usedLevel: s.level, fromLevel: s.level, toLevel: r.level, fromXp: s.xp, toXp: r.xp, instant } }], logText: `Применён навык «${name}» (истощение +${cost})${r.level > s.level ? `, уровень ${r.level}` : ''}` };
   }
   if (a.type === 'xp') {
     const delta = Math.trunc(a.delta); if (!delta) return { error: 'Укажите количество XP' };

@@ -43,7 +43,11 @@ export interface Effect {
   remainingCharges?: number | undefined;
   description?: string | undefined;
   automation: Automation;
+  /** Lifecycle, independent of automation: instant (once), sustained (ongoing state), gm (decided by the GM). Undefined = not specified yet. */
+  lifecycle?: EffectLifecycle | undefined;
 }
+export type EffectLifecycle = "instant" | "sustained" | "gm";
+export const LIFECYCLE_LABELS: Record<EffectLifecycle, string> = { instant: "Мгновенный", sustained: "Продолжительный", gm: "Определяет ведущий" };
 export interface ItemHistoryEntry { at: string; text: string }
 
 const num = (v: unknown, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
@@ -64,6 +68,7 @@ export function normalizeEffect(raw: any): Effect | null {
     remainingCharges: raw.charges == null || raw.charges === "" ? undefined : Math.max(0, Math.min(Math.max(0, Math.trunc(num(raw.charges))), Math.trunc(num(raw.remainingCharges, num(raw.charges))))),
     description: opt(raw.description),
     automation: ["auto", "confirm", "manual"].includes(raw.automation) ? raw.automation : "auto",
+    ...(["instant", "sustained", "gm"].includes(raw.lifecycle) ? { lifecycle: raw.lifecycle } : {}),
   };
 }
 
