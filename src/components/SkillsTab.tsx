@@ -136,6 +136,7 @@ function SkillCard({ c, s, run, busy, onMove, onCopy, onDelete, canMove, onEdit,
           <DropdownMenuItem onSelect={onCopy}>Создать копию</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setTransfer(true)}>Передать / обучить</DropdownMenuItem>
           <DropdownMenuItem disabled={sending || !!s.draft} onSelect={() => void toCatalog()}>Предложить в каталог{s.draft ? ' (черновик нельзя)' : ''}</DropdownMenuItem>
+          {s.templateId && <DropdownMenuItem onSelect={onCompare}>Сравнить с каталогом</DropdownMenuItem>}
           {(s.versions?.length ?? 0) > 0 && <DropdownMenuItem onSelect={() => setDetails(true)}>Версии и восстановление</DropdownMenuItem>}
           {canMove && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => onMove(-1)}><ArrowUp className="mr-2 h-4 w-4" />Выше</DropdownMenuItem><DropdownMenuItem onSelect={() => onMove(1)}><ArrowDown className="mr-2 h-4 w-4" />Ниже</DropdownMenuItem></>}
           <DropdownMenuSeparator /><DropdownMenuItem className="text-destructive" onSelect={() => setDel(true)}>Удалить</DropdownMenuItem>
@@ -173,6 +174,16 @@ export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => P
   const setSkills = (next: SkillInstance[], extra: Partial<Character> = {}) => save({ ...c, ...extra, skills: next }).catch(() => undefined);
   const move = (id: string, d: -1 | 1) => { const i = skills.findIndex(s => s.id === id), j = i + d; if (i < 0 || j < 0 || j >= skills.length) return; const n = [...skills]; [n[i], n[j]] = [n[j]!, n[i]!]; void setSkills(n); };
   const skillEffects = (c.activeEffects ?? []).filter(a => a.sourceType === 'skill');
+  const versions = useServerFn(skillCatalogVersions);
+  const [compare, setCompare] = useState<{ proposal: SkillDefinition; label: string; version: number } | null>(null);
+  const openCompare = async (s: SkillInstance) => {
+    try {
+      const r = await versions({ data: { catalogId: s.templateId! } }); const v = r.rows[0];
+      if (!v) { toast.error('Шаблон в каталоге недоступен'); return; }
+      if (v.version === s.templateVersion && JSON.stringify(normalizeSkillDefinition(v.data).levels) === JSON.stringify(s.definition.levels)) { toast.info('Навык совпадает с последней версией каталога'); return; }
+      setCompare({ proposal: normalizeSkillDefinition(v.data), version: v.version, label: `Каталог: версия ${v.version} (у вас — ${s.templateVersion ?? 'неизвестна'})` }); setEditing(s.id);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка'); }
+  };
   return <section className="wrap-safe grid gap-4">
     <div className="flex gap-2">{([['mine', 'Мои навыки'], ['catalog', 'Каталог']] as const).map(([k, l]) => <Button key={k} variant={sub === k ? 'default' : 'outline'} size="sm" onClick={() => setSub(k)}>{l}</Button>)}</div>
     {sub === 'catalog' ? <SkillCatalog c={c} /> : <>
@@ -186,16 +197,18 @@ export function SkillsTab({ c, save }: { c: Character; save: (c: Character) => P
         <Button onClick={() => setEditing('new')}><Plus className="mr-1 h-4 w-4" />Создать навык</Button>
       </div>
       {shown.length === 0 ? <p className="panel p-6 text-center text-sm text-muted-foreground">{skills.length ? 'Ничего не найдено' : 'У героя пока нет навыков'}</p>
-        : shown.map(s => <SkillCard key={s.id} c={c} s={s} run={run} busy={busy} canMove={sort === 'own' && !q && filter === 'all'} onMove={d => move(s.id, d)} onEdit={() => setEditing(s.id)}
+        : shown.map(s => <SkillCard key={s.id} c={c} s={s} run={run} busy={busy} canMove={sort === 'own' && !q && filter === 'all'} onMove={d => move(s.id, d)} onEdit={() => setEditing(s.id)} onCompare={() => void openCompare(s)}
           onRestore={i => { const v = s.versions![i]!; if (confirm(`Восстановить версию от ${new Date(v.at).toLocaleString('ru-RU')}? Текущая сохранится в версиях.`)) void save(commitDefinition(c, s.id, v.definition, !!s.draft, 'Восстановлена прежняя версия')).catch(() => undefined); }}
           onCopy={() => void setSkills([...skills, { ...structuredClone(s), id: uid(), lastUse: undefined, level: 1, xp: 0, definition: { ...structuredClone(s.definition), name: `${s.definition.name} (копия)` }, history: [{ id: uid(), at: new Date().toISOString(), text: `Копия навыка «${s.definition.name}»` }] }])}
           onDelete={() => void setSkills(skills.filter(x => x.id !== s.id), { activeEffects: (c.activeEffects ?? []).filter(a => !(a.sourceType === 'skill' && a.sourceItemId === s.id)) })} />)}
     </>}
-    <SkillEditor open={editing !== null} initial={editSkill?.definition ?? null} initialDraft={!!editSkill?.draft} onClose={() => setEditing(null)}
-      onSave={(def, draft) => {
-        const p = editSkill ? save(commitDefinition(c, editSkill.id, def, draft, draft ? 'Изменён в редакторе (черновик)' : 'Изменён в редакторе'))
+    <SkillEditor open={editing !== null} initial={editSkill?.definition ?? null} initialDraft={!!editSkill?.draft} compare={compare} onClose={() => { setEditing(null); setCompare(null); }}
+      onSave={(def, draft, took) => {
+        const nc = editSkill ? commitDefinition(c, editSkill.id, def, draft, took && compare ? `Перенесены изменения каталога (версия ${compare.version})` : draft ? 'Изменён в редакторе (черновик)' : 'Изменён в редакторе') : null;
+        if (nc && took && compare) nc.skills = (nc.skills ?? []).map(x => (x.id === editSkill!.id ? { ...x, templateVersion: compare.version } : x));
+        const p = nc ? save(nc)
           : setSkills([...skills, { id: uid(), definition: def, level: 1, xp: 0, draft, history: [{ id: uid(), at: new Date().toISOString(), text: 'Навык создан вручную' }] }]);
-        void Promise.resolve(p).then(() => { setEditing(null); toast.success('Навык сохранён'); }).catch(() => undefined);
+        void Promise.resolve(p).then(() => { setEditing(null); setCompare(null); toast.success('Навык сохранён'); }).catch(() => undefined);
       }} />
   </section>;
 }
