@@ -74,7 +74,8 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave, comp
   const [scope, setScope] = useState<'level' | 'rank' | 'all'>('level'); const [list, setList] = useState<Effect[]>([]);
   const [cost, setCost] = useState(''); const [draft, setDraft] = useState(initialDraft);
   const [step, setStep] = useState<Step>('create'); const [mode, setMode] = useState<null | 'manual' | 'ai'>(null);
-  useEffect(() => { if (open) { setDef(base); setLevel(1); setDraft(initialDraft); setStep(initial ? 'develop' : 'create'); setMode(initial ? 'manual' : null); setCmpOpen(!!compare); setTookCompare(false); } }, [open, base, initialDraft, initial, compare]);
+  useEffect(() => { if (open) { setDef(base); setLevel(1); setDraft(initialDraft); setStep(initial ? 'develop' : 'create'); setMode(initial ? 'manual' : null); setCmpOpen(!!compare); setTookCompare(false); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   useEffect(() => { setList(structuredClone(resolveLevel(def, level))); const c = def.levels[level - 1]?.exhaustionCost; setCost(c == null ? '' : String(c)); }, [def, level]);
   const [from, to] = scope === 'level' ? [level, level] : scope === 'rank' ? rankRange(level) : [1, SKILL_MAX_LEVEL];
   const dirtyLevel = JSON.stringify(list) !== JSON.stringify(resolveLevel(def, level)) || cost !== String(def.levels[level - 1]?.exhaustionCost ?? '');
@@ -91,7 +92,7 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave, comp
   const diffs = useMemo(() => diffLevels(base, def), [base, def]);
   const filled = filledLevels(def);
   const go = (s: Step) => {
-    if (s !== 'create' && !def.name.trim()) { toast.error('Введите название'); setStep('create'); setMode(m => m ?? 'manual'); return; }
+    if (s !== 'create' && !def.name.trim()) { if (mode === 'ai') { toast.info('Сначала сгенерируйте навык и нажмите «Принять»'); return; } toast.error('Введите название'); setStep('create'); setMode(m => m ?? 'manual'); return; }
     if (step === 'develop' && dirtyLevel && !apply()) return;
     setStep(s);
   };
@@ -112,7 +113,7 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave, comp
           {initial && <AiPanel def={def} onAccept={setDef} />}
           <p className="text-xs text-muted-foreground">Начальные эффекты задаются на следующем шаге для уровня 1 — остальные уровни их унаследуют.</p>
         </>}
-        <DialogFooter><Button variant="outline" onClick={onClose}>Отмена</Button>{mode && <Button onClick={() => { go('develop'); setLevel(1); }}>Далее: развитие</Button>}</DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Отмена</Button>{mode && (mode === 'manual' || def.name.trim()) && <Button onClick={() => { go('develop'); setLevel(1); }}>Далее: развитие</Button>}</DialogFooter>
       </div>}
       {compare && cmpOpen && <div className="panel grid gap-2 p-3"><b className="break-words">{compare.label}</b>
         <SkillProposalReview def={def} proposal={compare.proposal} origin="manual" defaultAll={false} note="Отметьте изменения шаблона, которые хотите перенести. Уровень и XP героя не меняются." onAccept={d => { setDef(d); setTookCompare(true); setCmpOpen(false); setStep('review'); }} onReject={() => setCmpOpen(false)} /></div>}

@@ -34,7 +34,7 @@ export async function generateSkillDraft(apiKey: string, prompt: string, type: '
     prompt: `${examples.length ? `Похожие навыки из каталога (ориентир баланса, JSON):\n${JSON.stringify(examples)}\n\n` : ''}${current ? `Текущая версия навыка (развёрнутые уровни, JSON):\n${JSON.stringify(current)}\n\nДоработай её по запросу, сохраняя key существующих эффектов.\n` : ''}${type ? `Тип навыка: ${type}.\n` : ''}Запрос: ${prompt}`,
     output: Output.object({ schema: draftSchema }),
     ...(signal ? { abortSignal: signal } : {}),
-    providerOptions: { openai: { forceReasoning: true, reasoningEffort: 'medium', reasoningSummary: 'auto', store: false, include: ['reasoning.encrypted_content'] } },
+    providerOptions: { openai: { forceReasoning: true, reasoningEffort: 'low', reasoningSummary: 'auto', store: false, include: ['reasoning.encrypted_content'] } },
   });
   return (await result.output) as AiSkillDraft;
 }
