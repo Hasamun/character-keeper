@@ -271,6 +271,21 @@ export function mergeSelectedLevels(current: SkillDefinition, proposal: SkillDef
   const curOrigins = current.levels.map(l => l.origin);
   return buildFromResolved(takeMeta ? proposal : current, a.map((x, i) => (selected.has(i + 1) ? b[i]! : x)), a.map((_, i) => (selected.has(i + 1) ? 'ai' : curOrigins[i] === 'empty' ? 'manual' : curOrigins[i]!)));
 }
+/** Short balance reference for AI: key levels with resolved numeric effects and cost. */
+export const compactSkillExample = (d: SkillDefinition) => ({ name: d.name, type: d.type, levels: [1, 5, 10, 15, 20, 25].map(level => ({ level, cost: d.type === 'active' ? costAt(d, level) : null, effects: resolveLevel(d, level).map(e => ({ kind: e.kind, target: e.target, value: e.value, ...(e.lifecycle ? { lifecycle: e.lifecycle } : {}) })) })) });
+/** Per-level pick: 'all' takes the whole proposed level (effects + cost); a list takes only those effect ids (added, changed or removed). */
+export type LevelPick = 'all' | string[];
+export function mergeSelection(current: SkillDefinition, proposal: SkillDefinition, picks: Record<number, LevelPick>, takeMeta: boolean, origin: PatchOrigin = 'ai'): SkillDefinition {
+  const a = resolvedLevels(current), b = resolvedLevels(proposal);
+  const levels = a.map((x, i) => {
+    const pick = picks[i + 1]; if (!pick) return x; if (pick === 'all') return b[i]!;
+    const ids = new Set(pick), next = b[i]!.effects;
+    const kept = x.effects.flatMap(e => (!ids.has(e.id) ? [e] : next.filter(n => n.id === e.id)));
+    return { effects: [...kept, ...next.filter(n => ids.has(n.id) && !x.effects.some(e => e.id === n.id))], cost: x.cost };
+  });
+  const cur = current.levels.map(l => l.origin);
+  return buildFromResolved(takeMeta ? proposal : current, levels, a.map((_, i) => (picks[i + 1] ? origin : cur[i] === 'empty' ? 'manual' : cur[i]!)));
+}
 export interface AiSkillDraft { name: string; type: SkillType; description: string; levels: { level: number; exhaustionCost: number | null; effects: (Omit<Effect, 'id' | 'damageType' | 'condition' | 'duration' | 'description'> & { key: string; damageType: string | null; condition: string | null; duration: string | null; description: string | null })[] }[] }
 const KINDS = new Set(['stat', 'skill', 'ac', 'attack', 'damage', 'resistance', 'vulnerability', 'extra_damage', 'condition', 'ability']);
 /** Converts model output (resolved effects per level, stable keys) into a patch definition; keys equal to existing ids keep them. */
@@ -284,7 +299,7 @@ export function aiDraftToDefinition(d: AiSkillDraft, makeId: () => string, exist
       const seen = new Set<string>();
       const effects = l.effects.filter(e => KINDS.has(e.kind) && !seen.has(e.key) && seen.add(e.key)).map((e): Effect => {
         if (!ids.has(e.key)) ids.set(e.key, makeId());
-        return { id: ids.get(e.key)!, kind: e.kind, target: String(e.target ?? '').slice(0, 120), value: Math.trunc(Number(e.value)) || 0, automation: ['auto', 'confirm', 'manual'].includes(e.automation) ? e.automation : 'manual',
+        return { id: ids.get(e.key)!, kind: e.kind, target: String(e.target ?? '').slice(0, 120), value: Math.trunc(Number(e.value)) || 0, automation: ['auto', 'confirm', 'manual'].includes(e.automation) ? e.automation : 'manual', ...(['instant', 'sustained', 'gm'].includes((e as { lifecycle?: string }).lifecycle ?? '') ? { lifecycle: (e as { lifecycle: 'instant' | 'sustained' | 'gm' }).lifecycle } : {}),
           ...(e.damageType ? { damageType: e.damageType.slice(0, 60) } : {}), ...(e.condition ? { condition: e.condition.slice(0, 300) } : {}), ...(e.duration ? { duration: e.duration.slice(0, 120) } : {}), ...(e.description ? { description: e.description.slice(0, 500) } : {}) };
       });
       last = { effects, cost: l.exhaustionCost == null ? last.cost : Math.max(0, Math.trunc(l.exhaustionCost)) };
@@ -298,8 +313,8 @@ export function aiDraftToDefinition(d: AiSkillDraft, makeId: () => string, exist
 /** Definition safe to publish: normalized, no personal progress/history/versions. */
 export const publishableSkill = (raw: unknown): SkillDefinition => { const d = normalizeSkillDefinition(raw); return { name: d.name.trim().slice(0, 120), type: d.type, description: d.description.slice(0, 4000), levels: d.levels }; };
 /** Independent personal copy of a catalog skill: starts at level 1 with 0 XP. */
-export function skillFromCatalog(raw: unknown, id: string, catalogName: string, at = new Date().toISOString()): SkillInstance {
-  return { id, definition: publishableSkill(raw), level: 1, xp: 0, draft: false, history: [{ id: `${at}:0`, at, text: `Добавлен из каталога «${catalogName}»` }] };
+export function skillFromCatalog(raw: unknown, id: string, catalogName: string, at = new Date().toISOString(), template?: { id: string; version: number }): SkillInstance {
+  return { id, ...(template ? { templateId: template.id, templateVersion: template.version } : {}), definition: publishableSkill(raw), level: 1, xp: 0, draft: false, history: [{ id: `${at}:0`, at, text: `Добавлен из каталога «${catalogName}»${template ? ` (версия ${template.version})` : ''}` }] };
 }
 
 // ---------- Transfer & teaching (stage 7) ----------

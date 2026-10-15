@@ -11,7 +11,8 @@ import { EFFECT_KIND_LABELS, LIFECYCLE_LABELS, effectLabel, type Effect, type Ef
 import { useServerFn } from '@tanstack/react-start';
 import { RankLevelPicker } from '@/components/SkillsTab';
 import { generateSkill } from '@/lib/skill-ai.functions';
-import { aiDraftToDefinition, mergeSelectedLevels, resolvedLevels, type AiSkillDraft } from '@/lib/rules/skills';
+import { SkillProposalReview } from './SkillProposalReview';
+import { aiDraftToDefinition, resolvedLevels, type AiSkillDraft } from '@/lib/rules/skills';
 import { costAt, diffLevels, filledLevels, levelInRank, newSkillDefinition, rankOf, rankRange, resolveLevel, setLevelCost, setLevelEffects, SKILL_MAX_LEVEL, type SkillDefinition } from '@/lib/rules/skills';
 
 const AUTO: Record<Automation, string> = { auto: 'Автоматически', confirm: 'С подтверждением', manual: 'Вручную (игровое решение)' };
@@ -43,9 +44,8 @@ function EffectRow({ e, onChange, onRemove }: { e: Effect; onChange: (e: Effect)
 function AiPanel({ def, onAccept }: { def: SkillDefinition; onAccept: (d: SkillDefinition) => void }) {
   const gen = useServerFn(generateSkill);
   const [prompt, setPrompt] = useState(''); const [busy, setBusy] = useState(false);
-  const [proposal, setProposal] = useState<SkillDefinition | null>(null); const [selected, setSelected] = useState<Set<number>>(new Set()); const [takeMeta, setTakeMeta] = useState(true);
+  const [proposal, setProposal] = useState<SkillDefinition | null>(null); const [examples, setExamples] = useState(0);
   const isEmpty = def.levels.every(l => l.origin === 'empty') && !def.name.trim();
-  const diffs = useMemo(() => (proposal ? diffLevels(def, proposal) : []), [def, proposal]);
   const run = async () => {
     if (prompt.trim().length < 3) { toast.error('Опишите навык подробнее'); return; }
     setBusy(true);
@@ -53,7 +53,7 @@ function AiPanel({ def, onAccept }: { def: SkillDefinition; onAccept: (d: SkillD
       const current = isEmpty ? null : { name: def.name, type: def.type, description: def.description, levels: resolvedLevels(def).map((l, i) => ({ level: i + 1, exhaustionCost: def.type === 'active' ? l.cost : null, effects: l.effects.map(e => ({ ...e, key: e.id })) })) };
       const r = await gen({ data: { prompt: prompt.trim(), type: isEmpty ? null : def.type, current } });
       const p = aiDraftToDefinition(r.draft as AiSkillDraft, uid, resolvedLevels(def).flatMap(l => l.effects.map(e => e.id)));
-      setProposal(p); setSelected(new Set(diffLevels(def, p).map(d => d.level))); setTakeMeta(true);
+      setProposal(p); setExamples(r.examples ?? 0);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Ошибка ИИ'); } finally { setBusy(false); }
   };
   return <details className="panel p-3" open={!!proposal}>
@@ -62,31 +62,19 @@ function AiPanel({ def, onAccept }: { def: SkillDefinition; onAccept: (d: SkillD
       <Textarea value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={2000} placeholder={isEmpty ? 'Например: активный навык щитоносца — парирование, рост КБ и способность прикрыть союзника' : 'Что изменить: например, ослабить бонусы на 1–10 уровнях'} />
       <Button size="sm" disabled={busy} onClick={() => void run()}>{busy ? 'ИИ думает… (до минуты)' : isEmpty ? 'Сгенерировать' : 'Предложить изменения'}</Button>
       <p className="text-xs text-muted-foreground">Ничего не сохраняется само: вы увидите отличия и выберете, что принять.</p>
-    </div> : <div className="mt-2 grid gap-2 text-sm">
-      <label className="flex items-start gap-2"><input type="checkbox" checked={takeMeta} onChange={e => setTakeMeta(e.target.checked)} /><span>Название, тип и описание: <b>{proposal.name}</b> ({proposal.type === 'active' ? 'активный' : 'пассивный'}) — {proposal.description}</span></label>
-      <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setSelected(new Set(diffs.map(d => d.level)))}>Выбрать все</Button><Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Снять все</Button></div>
-      {diffs.length === 0 && <p className="text-muted-foreground">Уровни не отличаются от текущих.</p>}
-      {diffs.map(d => <label key={d.level} className="flex items-start gap-2 rounded-md border border-border p-2"><input type="checkbox" checked={selected.has(d.level)} onChange={e => { const n = new Set(selected); if (e.target.checked) n.add(d.level); else n.delete(d.level); setSelected(n); }} />
-        <div><div className="text-xs text-muted-foreground">Уровень {d.level} · {rankOf(d.level)} {levelInRank(d.level)}</div>
-          {d.added.map(e => <div key={'a' + e.id} className="text-primary">+ {effectLabel(e)}{e.description ? ` — ${e.description}` : ''}</div>)}
-          {d.removed.map(e => <div key={'r' + e.id} className="text-destructive">− {effectLabel(e)}</div>)}
-          {d.changed.map(x => <div key={'c' + x.after.id}>~ {effectLabel(x.before)} → {effectLabel(x.after)}</div>)}
-          {d.costBefore !== d.costAfter && <div>Истощение: {d.costBefore} → {d.costAfter}</div>}</div></label>)}
-      <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => { onAccept(mergeSelectedLevels(def, proposal, selected, takeMeta)); setProposal(null); toast.success('Принято в редактор — проверьте и сохраните'); }}>Принять выбранное</Button>
-        <Button size="sm" variant="outline" onClick={() => setProposal(null)}>Отклонить</Button></div>
-      <p className="text-xs text-muted-foreground">Выбранный уровень принимается целиком, со всем набором эффектов на нём.</p>
-    </div>}
+    </div> : <div className="mt-2"><SkillProposalReview def={def} proposal={proposal} onAccept={d => { onAccept(d); setProposal(null); toast.success('Принято в редактор — проверьте и сохраните'); }} onReject={() => setProposal(null)} note={examples ? `ИИ учёл похожие навыки каталога: ${examples}` : 'Похожих навыков в каталоге нет — баланс по общим правилам.'} /></div>}
   </details>;
 }
 
 type Step = 'create' | 'develop' | 'review';
-export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { open: boolean; initial: SkillDefinition | null; initialDraft: boolean; onClose: () => void; onSave: (def: SkillDefinition, draft: boolean) => void }) {
+export function SkillEditor({ open, initial, initialDraft, onClose, onSave, compare }: { open: boolean; initial: SkillDefinition | null; initialDraft: boolean; onClose: () => void; onSave: (def: SkillDefinition, draft: boolean, tookCompare: boolean) => void; compare?: { proposal: SkillDefinition; label: string } | null }) {
+  const [cmpOpen, setCmpOpen] = useState(false); const [tookCompare, setTookCompare] = useState(false);
   const base = useMemo(() => initial ?? { ...newSkillDefinition('active'), name: '' }, [initial, open]);
   const [def, setDef] = useState(base); const [level, setLevel] = useState(1);
   const [scope, setScope] = useState<'level' | 'rank' | 'all'>('level'); const [list, setList] = useState<Effect[]>([]);
   const [cost, setCost] = useState(''); const [draft, setDraft] = useState(initialDraft);
   const [step, setStep] = useState<Step>('create'); const [mode, setMode] = useState<null | 'manual' | 'ai'>(null);
-  useEffect(() => { if (open) { setDef(base); setLevel(1); setDraft(initialDraft); setStep(initial ? 'develop' : 'create'); setMode(initial ? 'manual' : null); } }, [open, base, initialDraft, initial]);
+  useEffect(() => { if (open) { setDef(base); setLevel(1); setDraft(initialDraft); setStep(initial ? 'develop' : 'create'); setMode(initial ? 'manual' : null); setCmpOpen(!!compare); setTookCompare(false); } }, [open, base, initialDraft, initial, compare]);
   useEffect(() => { setList(structuredClone(resolveLevel(def, level))); const c = def.levels[level - 1]?.exhaustionCost; setCost(c == null ? '' : String(c)); }, [def, level]);
   const [from, to] = scope === 'level' ? [level, level] : scope === 'rank' ? rankRange(level) : [1, SKILL_MAX_LEVEL];
   const dirtyLevel = JSON.stringify(list) !== JSON.stringify(resolveLevel(def, level)) || cost !== String(def.levels[level - 1]?.exhaustionCost ?? '');
@@ -126,6 +114,8 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { 
         </>}
         <DialogFooter><Button variant="outline" onClick={onClose}>Отмена</Button>{mode && <Button onClick={() => { go('develop'); setLevel(1); }}>Далее: развитие</Button>}</DialogFooter>
       </div>}
+      {compare && cmpOpen && <div className="panel grid gap-2 p-3"><b className="break-words">{compare.label}</b>
+        <SkillProposalReview def={def} proposal={compare.proposal} origin="manual" defaultAll={false} note="Отметьте изменения шаблона, которые хотите перенести. Уровень и XP героя не меняются." onAccept={d => { setDef(d); setTookCompare(true); setCmpOpen(false); setStep('review'); }} onReject={() => setCmpOpen(false)} /></div>}
       {step === 'develop' && <div className="grid gap-3 text-sm">
         <div><div className="mb-1 font-semibold">Ранг и уровень</div><RankLevelPicker level={level} onPick={pickLevel} marked={filled} />
           <p className="mt-1 text-xs text-muted-foreground">Жирные — уровни со своими изменениями; остальные наследуют предыдущий.</p></div>
@@ -156,7 +146,7 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { 
             {d.changed.map(x => <div key={'c' + x.after.id}>{effectLabel(x.before)} → {effectLabel(x.after)}</div>)}
             {d.costBefore !== d.costAfter && <div>Истощение: {d.costBefore} → {d.costAfter}</div>}</div>)}</div>}
         <label className="flex items-center gap-2"><input type="checkbox" checked={draft} onChange={e => setDraft(e.target.checked)} />Сохранить как черновик (можно неполный)</label>
-        <DialogFooter><Button variant="outline" onClick={() => { if (confirm('Отклонить все изменения и закрыть редактор?')) onClose(); }}>Отклонить</Button><Button variant="outline" onClick={() => setStep('develop')}>Назад</Button><Button onClick={() => onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft)}>Принять и сохранить</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => { if (confirm('Отклонить все изменения и закрыть редактор?')) onClose(); }}>Отклонить</Button><Button variant="outline" onClick={() => setStep('develop')}>Назад</Button><Button onClick={() => onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft, tookCompare)}>Принять и сохранить</Button></DialogFooter>
       </div>}
     </DialogContent>
   </Dialog>;

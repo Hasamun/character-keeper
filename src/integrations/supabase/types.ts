@@ -402,6 +402,41 @@ export type Database = {
           },
         ]
       }
+      skill_catalog_versions: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          data: Json
+          name: string
+          type: string
+          version: number
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          data: Json
+          name: string
+          type: string
+          version: number
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          data?: Json
+          name?: string
+          type?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_catalog_versions_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "skill_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_transfer_offers: {
         Row: {
           created_at: string
