@@ -28,3 +28,9 @@ describe('Sharing permissions', () => {
     expect(canShareAction(normalizePermissions({ skills: 'edit' }), 'skills')).toBe(true);
   });
 });
+describe('Skill permission levels', () => {
+  it('use allows applying but not editing', () => { const p = normalizePermissions({ skills: 'use' }); expect(canShareAction(p, 'skillsApply')).toBe(true); expect(canShareAction(p, 'skills')).toBe(false); });
+  it('read allows neither', () => { const p = normalizePermissions({ skills: 'read' }); expect(canShareAction(p, 'skillsApply')).toBe(false); });
+  it('edit allows both', () => { const p = normalizePermissions({ skills: 'edit' }); expect(canShareAction(p, 'skillsApply') && canShareAction(p, 'skills')).toBe(true); });
+  it('use outside skills degrades to read', () => expect(normalizePermissions({ inventory: 'use' }).inventory).toBe('read'));
+});

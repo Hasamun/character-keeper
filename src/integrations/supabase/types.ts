@@ -402,6 +402,54 @@ export type Database = {
           },
         ]
       }
+      skill_transfer_offers: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          from_character_id: string
+          from_character_name: string
+          from_user: string
+          from_user_name: string
+          id: string
+          mode: string
+          payload: Json
+          skill_name: string
+          status: string
+          to_character_id: string | null
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          from_character_id: string
+          from_character_name?: string
+          from_user: string
+          from_user_name?: string
+          id?: string
+          mode: string
+          payload: Json
+          skill_name: string
+          status?: string
+          to_character_id?: string | null
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          from_character_id?: string
+          from_character_name?: string
+          from_user?: string
+          from_user_name?: string
+          id?: string
+          mode?: string
+          payload?: Json
+          skill_name?: string
+          status?: string
+          to_character_id?: string | null
+          to_user?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -425,6 +473,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_skill_offer: {
+        Args: { _char: string; _data: Json; _expected: string; _offer: string }
+        Returns: Json
+      }
       account_active: { Args: never; Returns: boolean }
       archive_catalog: {
         Args: { _id: string; _reason: string }
@@ -470,6 +522,20 @@ export type Database = {
           _op: string
         }
         Returns: Json
+      }
+      create_skill_offer: {
+        Args: {
+          _char: string
+          _email: string
+          _mode: string
+          _name: string
+          _payload: Json
+        }
+        Returns: string
+      }
+      decide_skill_offer: {
+        Args: { _action: string; _offer: string }
+        Returns: undefined
       }
       has_role: {
         Args: {
