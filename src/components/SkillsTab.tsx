@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
-import { ArrowDown, ArrowUp, ChevronDown, Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, MoreHorizontal, Plus } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ import { SkillEditor } from '@/components/SkillEditor';
 import { SkillCatalog } from '@/components/SkillCatalog';
 import { SkillTransferDialog } from '@/components/SkillTransferDialog';
 import { submitSkill } from '@/lib/skill-catalog.functions';
-import { commitDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
+import { commitDefinition, costAt, exhaustionBand, levelInRank, needsExhaustionConfirm, newSkillDefinition, rankOf, resolveLevel, SKILL_MAX_LEVEL, SKILL_RANKS, xpToNext, type SkillAction, type SkillInstance, type SkillType } from '@/lib/rules/skills';
 import { skillAction } from '@/lib/skills.functions';
 import { useCharacters } from '@/lib/characters-store';
 
@@ -87,8 +88,6 @@ function SkillDetails({ c, s, run, busy, open, onClose, onRestore }: { c: Charac
   const [viewLevel, setViewLevel] = useState(s.level); const [xp, setXp] = useState(''); const [reason, setReason] = useState('');
   const d = s.definition, ex = c.exhaustion ?? 0, effects = resolveLevel(d, s.level);
   const lu = s.lastUse, canUndo = !!lu && lu.after.level === s.level && lu.after.xp === s.xp && ex >= lu.cost;
-  const next = s.level < SKILL_MAX_LEVEL ? diffLevels({ ...d, levels: d.levels.map((_, i) => ({ origin: 'empty' as const, ops: [], ...(i === 0 ? {} : {}) })) } as SkillDefinition, d) : [];
-  void next;
   const nextFx = s.level < SKILL_MAX_LEVEL ? resolveLevel(d, s.level + 1) : [];
   const nextChanges = s.level < SKILL_MAX_LEVEL ? [...nextFx.filter(e => JSON.stringify(effects.find(x => x.id === e.id)) !== JSON.stringify(e)).map(e => (effects.some(x => x.id === e.id) ? '~ ' : '+ ') + effectLabel(e)), ...effects.filter(e => !nextFx.some(x => x.id === e.id)).map(e => '− ' + effectLabel(e))] : [];
   const costNext = s.level < SKILL_MAX_LEVEL ? costAt(d, s.level + 1) : null;
