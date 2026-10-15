@@ -21,6 +21,8 @@ export function SkillProposalReview({ def, proposal, onAccept, onReject, note, o
   return <div className="wrap-safe grid gap-2 text-sm">
     {note && <p className="text-xs text-muted-foreground">{note}</p>}
     {metaDiff && <label className="flex items-start gap-2"><input type="checkbox" checked={takeMeta} onChange={e => setTakeMeta(e.target.checked)} /><span className="min-w-0 break-words">Название, тип и описание: <b>{proposal.name}</b> ({proposal.type === 'active' ? 'активный' : 'пассивный'}) — {proposal.description}</span></label>}
+    {origin === 'ai' && diffs.length > 0 && <p className="text-xs text-muted-foreground">Ветка развития готова: {diffs.length} ур. с изменениями. Всё уже отмечено — достаточно нажать «Принять выбранное».</p>}
+    <details open={origin !== 'ai'} className="grid gap-2"><summary className="cursor-pointer text-xs text-primary">{origin === 'ai' ? 'Показать уровни и выбрать вручную' : 'Уровни'}</summary><div className="mt-2 grid gap-2">
     <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setLevels(diffs.map(d => d.level), true)}>Вся прогрессия</Button><Button size="sm" variant="outline" onClick={() => setPicks({})}>Снять все</Button>
       {SKILL_RANKS.map((r, i) => { const ls = diffs.map(d => d.level).filter(l => l > i * 5 && l <= i * 5 + 5); return ls.length ? <Button key={r} size="sm" variant="outline" onClick={() => setLevels(ls, !ls.every(l => picks[l] === 'all'))}>{r}</Button> : null; })}</div>
     {diffs.length === 0 && <p className="text-muted-foreground">Уровни не отличаются от текущих.</p>}
@@ -30,6 +32,7 @@ export function SkillProposalReview({ def, proposal, onAccept, onReject, note, o
       {d.removed.map(e => <label key={'r' + e.id} className="flex items-start gap-2 text-destructive"><input type="checkbox" checked={has(d.level, e.id)} onChange={x => toggleEffect(d.level, all, e.id, x.target.checked)} /><span className="min-w-0 break-words">− {effectLabel(e)}</span></label>)}
       {d.changed.map(x => <label key={'c' + x.after.id} className="flex items-start gap-2"><input type="checkbox" checked={has(d.level, x.after.id)} onChange={y => toggleEffect(d.level, all, x.after.id, y.target.checked)} /><span className="min-w-0 break-words">{effectLabel(x.before)} → {effectLabel(x.after)}</span></label>)}
     </div>; })}
+    </div></details>
     <div className="flex flex-wrap gap-2"><Button size="sm" disabled={!count && !takeMeta} onClick={() => onAccept(mergeSelection(def, proposal, picks, takeMeta, origin))}>Принять выбранное</Button><Button size="sm" variant="outline" onClick={onReject}>Отклонить</Button></div>
     <p className="text-xs text-muted-foreground">Отдельный эффект берётся без изменения стоимости истощения уровня; стоимость переносится только при выборе уровня целиком.</p>
   </div>;
