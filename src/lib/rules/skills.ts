@@ -303,17 +303,27 @@ export function skillFromCatalog(raw: unknown, id: string, catalogName: string, 
 }
 
 // ---------- Transfer & teaching (stage 7) ----------
-export type TransferMode = 'copy' | 'teach_novice' | 'teach_current' | 'move';
-export const TRANSFER_LABELS: Record<TransferMode, string> = { copy: 'Копия (с 1 уровня)', teach_novice: 'Обучить с нуля (1 уровень)', teach_current: 'Обучить до текущего уровня (XP 0)', move: 'Передать (уровень и XP уходят к получателю)' };
-/** Pure transfer between heroes. Only `move` changes the source: the skill and its running effects leave it. */
+export type TransferMode = 'teach_novice' | 'teach_current';
+export const TRANSFER_LABELS: Record<TransferMode, string> = { teach_novice: 'Новичок: 1 уровень, 0 XP', teach_current: 'Текущий уровень учителя, 0 XP' };
+/** What travels to the recipient: definition and level only — never exhaustion, running effects, history or usage. */
+export type SkillTransferPayload = { definition: SkillDefinition; level: number; templateId?: string; templateVersion?: number };
+export function transferPayload(s: SkillInstance, mode: TransferMode): SkillTransferPayload {
+  const c = copySkillFor(s, mode, 'x');
+  return { definition: c.definition, level: c.level, ...(c.templateId ? { templateId: c.templateId } : {}), ...(c.templateVersion != null ? { templateVersion: c.templateVersion } : {}) };
+}
+/** Adds an independent copy to the recipient. The sender is never modified. */
+export function receiveSkill(to: Character, raw: unknown, newId: string, fromName: string, at = new Date().toISOString()): { to: Character; name: string } {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Partial<SkillTransferPayload>;
+  const definition = normalizeSkillDefinition(p.definition);
+  const level = Math.min(MAX_SKILL_LEVEL, Math.max(1, Math.trunc(Number(p.level) || 1)));
+  const s: SkillInstance = { id: newId, definition, level, xp: 0, draft: false, history: [{ id: `${at}:t`, at, text: `Изучен у «${fromName}»` }],
+    ...(typeof p.templateId === 'string' ? { templateId: p.templateId } : {}), ...(typeof p.templateVersion === 'number' ? { templateVersion: p.templateVersion } : {}) };
+  return { to: { ...to, skills: [...(to.skills ?? []), s] }, name: definition.name };
+}
 export function transferSkill(from: Character, to: Character, skillId: string, mode: TransferMode, newId: string, at = new Date().toISOString()): { from: Character; to: Character; name: string } | { error: string } {
   if (from.id === to.id) return { error: 'Выберите другого героя' };
+  if (mode !== 'teach_novice' && mode !== 'teach_current') return { error: 'Неизвестный способ передачи' };
   const s = (from.skills ?? []).find(x => x.id === skillId); if (!s) return { error: 'Навык не найден' };
-  const name = s.definition.name;
-  const copy: SkillInstance = mode === 'move'
-    ? { ...structuredClone(s), id: newId, lastUse: undefined, history: [...s.history, { id: `${at}:t`, at, text: `Передан от «${from.name}»` }].slice(-100) }
-    : { ...copySkillFor(s, mode, newId), history: [{ id: `${at}:t`, at, text: mode === 'copy' ? `Скопирован у «${from.name}»` : `Изучен у «${from.name}»` }] };
-  const nextTo = { ...to, skills: [...(to.skills ?? []), copy] };
-  const nextFrom = mode === 'move' ? { ...from, skills: (from.skills ?? []).filter(x => x.id !== skillId), activeEffects: otherEffects(from, skillId) } : from;
-  return { from: nextFrom, to: nextTo, name };
+  const r = receiveSkill(to, transferPayload(s, mode), newId, from.name, at);
+  return { from, to: r.to, name: r.name };
 }
