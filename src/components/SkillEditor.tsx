@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { uid, PRIMARY_STAT_NAMES, SECONDARY_SKILLS } from '@/lib/rules';
 import { EFFECT_KIND_LABELS, LIFECYCLE_LABELS, effectLabel, type Effect, type EffectKind, type Automation, type EffectLifecycle } from '@/lib/rules/items';
 import { useServerFn } from '@tanstack/react-start';
+import { RankLevelPicker } from '@/components/SkillsTab';
 import { generateSkill } from '@/lib/skill-ai.functions';
 import { aiDraftToDefinition, mergeSelectedLevels, resolvedLevels, type AiSkillDraft } from '@/lib/rules/skills';
 import { costAt, diffLevels, filledLevels, levelInRank, newSkillDefinition, rankOf, rankRange, resolveLevel, setLevelCost, setLevelEffects, SKILL_MAX_LEVEL, type SkillDefinition } from '@/lib/rules/skills';
@@ -26,14 +27,16 @@ function EffectRow({ e, onChange, onRemove }: { e: Effect; onChange: (e: Effect)
       <Input aria-label="Значение" className="w-24" type="number" value={e.value} onChange={x => set({ value: Math.trunc(Number(x.target.value)) || 0 })} />
       <Button size="icon" variant="outline" aria-label="Удалить эффект" onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
     </div>
-    <div className="grid gap-2 sm:grid-cols-2">
-      <select aria-label="Тип действия" className={cn(sel, !e.lifecycle && 'border-destructive')} value={e.lifecycle ?? ''} onChange={x => set({ lifecycle: (x.target.value || undefined) as EffectLifecycle | undefined })}><option value="">Уточните тип действия…</option>{Object.entries(LIFECYCLE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-      <select aria-label="Применение" className={sel} value={e.automation} onChange={x => set({ automation: x.target.value as Automation })}>{Object.entries(AUTO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-      {['resistance', 'vulnerability', 'extra_damage', 'damage'].includes(e.kind) && <Input placeholder="Тип урона" value={e.damageType ?? ''} onChange={x => set({ damageType: x.target.value || undefined })} />}
-      <Input placeholder="Условие (необязательно)" value={e.condition ?? ''} onChange={x => set({ condition: x.target.value || undefined })} />
-      <Input placeholder="Длительность (текстом)" value={e.duration ?? ''} onChange={x => set({ duration: x.target.value || undefined })} />
-    </div>
+    <select aria-label="Тип действия" className={cn(sel, !e.lifecycle && 'border-destructive')} value={e.lifecycle ?? ''} onChange={x => set({ lifecycle: (x.target.value || undefined) as EffectLifecycle | undefined })}><option value="">Уточните тип действия…</option>{Object.entries(LIFECYCLE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
     <Input placeholder="Описание эффекта" maxLength={500} value={e.description ?? ''} onChange={x => set({ description: x.target.value || undefined })} />
+    <details><summary className="cursor-pointer text-xs text-primary">Дополнительные параметры</summary>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <select aria-label="Применение" className={sel} value={e.automation} onChange={x => set({ automation: x.target.value as Automation })}>{Object.entries(AUTO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+        {['resistance', 'vulnerability', 'extra_damage', 'damage'].includes(e.kind) && <Input placeholder="Тип урона" value={e.damageType ?? ''} onChange={x => set({ damageType: x.target.value || undefined })} />}
+        <Input placeholder="Условие (необязательно)" value={e.condition ?? ''} onChange={x => set({ condition: x.target.value || undefined })} />
+        <Input placeholder="Длительность (текстом)" value={e.duration ?? ''} onChange={x => set({ duration: x.target.value || undefined })} />
+      </div>
+    </details>
   </div>;
 }
 
@@ -76,12 +79,14 @@ function AiPanel({ def, onAccept }: { def: SkillDefinition; onAccept: (d: SkillD
   </details>;
 }
 
+type Step = 'create' | 'develop' | 'review';
 export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { open: boolean; initial: SkillDefinition | null; initialDraft: boolean; onClose: () => void; onSave: (def: SkillDefinition, draft: boolean) => void }) {
   const base = useMemo(() => initial ?? { ...newSkillDefinition('active'), name: '' }, [initial, open]);
   const [def, setDef] = useState(base); const [level, setLevel] = useState(1);
   const [scope, setScope] = useState<'level' | 'rank' | 'all'>('level'); const [list, setList] = useState<Effect[]>([]);
-  const [cost, setCost] = useState(''); const [draft, setDraft] = useState(initialDraft); const [review, setReview] = useState(false);
-  useEffect(() => { if (open) { setDef(base); setLevel(1); setDraft(initialDraft); setReview(false); } }, [open, base, initialDraft]);
+  const [cost, setCost] = useState(''); const [draft, setDraft] = useState(initialDraft);
+  const [step, setStep] = useState<Step>('create'); const [mode, setMode] = useState<null | 'manual' | 'ai'>(null);
+  useEffect(() => { if (open) { setDef(base); setLevel(1); setDraft(initialDraft); setStep(initial ? 'develop' : 'create'); setMode(initial ? 'manual' : null); } }, [open, base, initialDraft, initial]);
   useEffect(() => { setList(structuredClone(resolveLevel(def, level))); const c = def.levels[level - 1]?.exhaustionCost; setCost(c == null ? '' : String(c)); }, [def, level]);
   const [from, to] = scope === 'level' ? [level, level] : scope === 'rank' ? rankRange(level) : [1, SKILL_MAX_LEVEL];
   const dirtyLevel = JSON.stringify(list) !== JSON.stringify(resolveLevel(def, level)) || cost !== String(def.levels[level - 1]?.exhaustionCost ?? '');
@@ -97,30 +102,32 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { 
   };
   const diffs = useMemo(() => diffLevels(base, def), [base, def]);
   const filled = filledLevels(def);
-  const startSave = () => {
-    if (!def.name.trim()) { toast.error('Введите название'); return; }
-    if (dirtyLevel && !apply()) return;
-    setReview(true);
+  const go = (s: Step) => {
+    if (s !== 'create' && !def.name.trim()) { toast.error('Введите название'); setStep('create'); setMode(m => m ?? 'manual'); return; }
+    if (step === 'develop' && dirtyLevel && !apply()) return;
+    setStep(s);
   };
+  const pickLevel = (l: number) => { if (dirtyLevel && !confirm('Есть неприменённые правки уровня. Отбросить их?')) return; setLevel(l); };
+  const meta = base.name !== def.name || base.description !== def.description || base.type !== def.type;
   return <Dialog open={open} onOpenChange={o => !o && onClose()}>
-    <DialogContent className="wrap-safe max-h-[92dvh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{initial ? `Редактор: ${initial.name}` : 'Новый навык'}</DialogTitle></DialogHeader>
-      {review ? <div className="grid gap-3 text-sm">
-        <div className="font-semibold">Проверьте изменения перед сохранением</div>
-        {diffs.length === 0 ? <p className="text-muted-foreground">Изменений по уровням нет{initial && (base.name !== def.name || base.description !== def.description || base.type !== def.type) ? ' (изменены название, тип или описание)' : ''}.</p>
-          : <div className="grid gap-2">{diffs.map(d => <div key={d.level} className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Уровень {d.level} · {rankOf(d.level)} {levelInRank(d.level)}</div>
-            {d.added.map(e => <div key={'a' + e.id} className="text-primary">+ {effectLabel(e)}</div>)}
-            {d.removed.map(e => <div key={'r' + e.id} className="text-destructive">− {effectLabel(e)}</div>)}
-            {d.changed.map(x => <div key={'c' + x.after.id}>~ {effectLabel(x.before)} → {effectLabel(x.after)}</div>)}
-            {d.costBefore !== d.costAfter && <div>Истощение: {d.costBefore} → {d.costAfter}</div>}</div>)}</div>}
-        <label className="flex items-center gap-2"><input type="checkbox" checked={draft} onChange={e => setDraft(e.target.checked)} />Сохранить как черновик</label>
-        <DialogFooter><Button variant="outline" onClick={() => setReview(false)}>Назад к редактору</Button><Button onClick={() => onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft)}>Сохранить</Button></DialogFooter>
-      </div> : <div className="grid gap-3 text-sm">
-        <AiPanel def={def} onAccept={setDef} />
-        <Input value={def.name} onChange={e => setDef({ ...def, name: e.target.value })} placeholder="Название" maxLength={120} />
-        <div className="flex gap-2">{(['active', 'passive'] as const).map(t => <Button key={t} size="sm" variant={def.type === t ? 'default' : 'outline'} onClick={() => setDef({ ...def, type: t })}>{t === 'active' ? 'Активный' : 'Пассивный'}</Button>)}</div>
-        <Textarea value={def.description} onChange={e => setDef({ ...def, description: e.target.value })} placeholder="Описание" maxLength={4000} />
-        <div><div className="mb-1 font-semibold">Уровень</div>
-          <div className="flex flex-wrap gap-1">{Array.from({ length: SKILL_MAX_LEVEL }, (_, i) => i + 1).map(l => <button key={l} onClick={() => { if (dirtyLevel && !confirm('Есть неприменённые правки уровня. Отбросить их?')) return; setLevel(l); }} className={cn('h-7 w-7 rounded border text-xs', l === level ? 'border-primary bg-primary/15 text-primary' : 'border-border', filled.includes(l) && 'font-bold')} title={filled.includes(l) ? 'Есть свои изменения' : 'Наследует предыдущий уровень'}>{l}</button>)}</div>
+    <DialogContent className="wrap-safe max-h-[92dvh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle className="break-words">{initial ? `Редактор: ${initial.name}` : 'Новый навык'}</DialogTitle></DialogHeader>
+      <div className="flex flex-wrap gap-1">{([['create', '1. Создание'], ['develop', '2. Развитие'], ['review', '3. Проверка']] as const).map(([k, l]) => <Button key={k} size="sm" variant={step === k ? 'default' : 'outline'} onClick={() => go(k)}>{l}</Button>)}</div>
+      {step === 'create' && <div className="grid gap-3 text-sm">
+        {!initial && <div className="grid gap-2 sm:grid-cols-2">
+          <Button variant={mode === 'manual' ? 'default' : 'outline'} className="h-auto whitespace-normal py-3" onClick={() => setMode('manual')}>Создать вручную</Button>
+          <Button variant={mode === 'ai' ? 'default' : 'outline'} className="h-auto whitespace-normal py-3" onClick={() => setMode('ai')}>Создать с помощью ИИ</Button></div>}
+        {mode === 'ai' && <AiPanel def={def} onAccept={d => { setDef(d); setMode('manual'); setStep('develop'); }} />}
+        {mode === 'manual' && <>
+          <Input value={def.name} onChange={e => setDef({ ...def, name: e.target.value })} placeholder="Название" maxLength={120} />
+          <div className="flex gap-2">{(['active', 'passive'] as const).map(t => <Button key={t} size="sm" variant={def.type === t ? 'default' : 'outline'} onClick={() => setDef({ ...def, type: t })}>{t === 'active' ? 'Активный' : 'Пассивный'}</Button>)}</div>
+          <Textarea value={def.description} onChange={e => setDef({ ...def, description: e.target.value })} placeholder="Описание" maxLength={4000} />
+          {initial && <AiPanel def={def} onAccept={setDef} />}
+          <p className="text-xs text-muted-foreground">Начальные эффекты задаются на следующем шаге для уровня 1 — остальные уровни их унаследуют.</p>
+        </>}
+        <DialogFooter><Button variant="outline" onClick={onClose}>Отмена</Button>{mode && <Button onClick={() => { go('develop'); setLevel(1); }}>Далее: развитие</Button>}</DialogFooter>
+      </div>}
+      {step === 'develop' && <div className="grid gap-3 text-sm">
+        <div><div className="mb-1 font-semibold">Ранг и уровень</div><RankLevelPicker level={level} onPick={pickLevel} marked={filled} />
           <p className="mt-1 text-xs text-muted-foreground">Жирные — уровни со своими изменениями; остальные наследуют предыдущий.</p></div>
         <div className="panel grid gap-2 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2"><b>Уровень {level} · {rankOf(level)} {levelInRank(level)}</b>
@@ -136,7 +143,20 @@ export function SkillEditor({ open, initial, initialDraft, onClose, onSave }: { 
             <span className="text-xs text-muted-foreground">Уровни выше {to} сохраняют свои изменения.</span>
           </div>
         </div>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Отмена</Button><Button onClick={startSave}>Далее: проверить изменения</Button></DialogFooter>
+        <AiPanel def={def} onAccept={setDef} />
+        <DialogFooter><Button variant="outline" onClick={() => go('create')}>Назад</Button><Button onClick={() => go('review')}>Далее: проверка</Button></DialogFooter>
+      </div>}
+      {step === 'review' && <div className="grid gap-3 text-sm">
+        <div className="font-semibold">Было → Стало</div>
+        {meta && <div className="rounded-md border border-border p-2">{base.name !== def.name && <div className="break-words">Название: «{base.name || '—'}» → «{def.name}»</div>}{base.type !== def.type && <div>Тип: {base.type === 'active' ? 'активный' : 'пассивный'} → {def.type === 'active' ? 'активный' : 'пассивный'}</div>}{base.description !== def.description && <div>Описание изменено</div>}</div>}
+        {diffs.length === 0 ? <p className="text-muted-foreground">Изменений по уровням нет.</p>
+          : <div className="grid gap-2">{diffs.map(d => <div key={d.level} className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Уровень {d.level} · {rankOf(d.level)} {levelInRank(d.level)}</div>
+            {d.added.map(e => <div key={'a' + e.id} className="text-primary">+ {effectLabel(e)}</div>)}
+            {d.removed.map(e => <div key={'r' + e.id} className="text-destructive">− {effectLabel(e)}</div>)}
+            {d.changed.map(x => <div key={'c' + x.after.id}>{effectLabel(x.before)} → {effectLabel(x.after)}</div>)}
+            {d.costBefore !== d.costAfter && <div>Истощение: {d.costBefore} → {d.costAfter}</div>}</div>)}</div>}
+        <label className="flex items-center gap-2"><input type="checkbox" checked={draft} onChange={e => setDraft(e.target.checked)} />Сохранить как черновик (можно неполный)</label>
+        <DialogFooter><Button variant="outline" onClick={() => { if (confirm('Отклонить все изменения и закрыть редактор?')) onClose(); }}>Отклонить</Button><Button variant="outline" onClick={() => setStep('develop')}>Назад</Button><Button onClick={() => onSave({ ...def, name: def.name.trim(), description: def.description.trim() }, draft)}>Принять и сохранить</Button></DialogFooter>
       </div>}
     </DialogContent>
   </Dialog>;
